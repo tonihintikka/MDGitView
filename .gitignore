@@ -1,0 +1,5 @@
+.DS_Store
+target/
+md-viewer-macos/MDViewerMacOS.xcodeproj/
+md-viewer-macos/Vendor/libmd_ffi.a
+md-viewer-macos/Vendor/libmd_ffi.dylib

@@ -1,0 +1,96 @@
+name: MDViewerMacOS
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: 5.10
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+targets:
+  MDViewer:
+    type: application
+    platform: macOS
+    info:
+      path: Config/MDViewer-Info.plist
+    entitlements:
+      path: Config/MDViewer.entitlements
+    sources:
+      - path: App
+      - path: Shared
+      - path: Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdviewer
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-L$(SRCROOT)/Vendor"
+          - "-lmd_ffi"
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Vendor"
+        HEADER_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/../md-ffi/include"
+    preBuildScripts:
+      - name: Build Rust FFI
+        script: |
+          if [ -x "${SRCROOT}/../scripts/build_rust.sh" ]; then
+            "${SRCROOT}/../scripts/build_rust.sh" "${CONFIGURATION}"
+          else
+            echo "warning: scripts/build_rust.sh not found"
+          fi
+    dependencies:
+      - target: MarkdownPreviewExtension
+        embed: true
+      - target: MarkdownThumbnailExtension
+        embed: true
+
+  MarkdownPreviewExtension:
+    type: app-extension
+    platform: macOS
+    info:
+      path: Config/MarkdownPreviewExtension-Info.plist
+    entitlements:
+      path: Config/MarkdownPreviewExtension.entitlements
+    sources:
+      - path: PreviewExtension
+      - path: Shared
+      - path: Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdviewer.preview
+        ENABLE_HARDENED_RUNTIME: YES
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-L$(SRCROOT)/Vendor"
+          - "-lmd_ffi"
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Vendor"
+
+  MarkdownThumbnailExtension:
+    type: app-extension
+    platform: macOS
+    info:
+      path: Config/MarkdownThumbnailExtension-Info.plist
+    entitlements:
+      path: Config/MarkdownThumbnailExtension.entitlements
+    sources:
+      - path: ThumbnailExtension
+      - path: Shared
+      - path: Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdviewer.thumbnail
+        ENABLE_HARDENED_RUNTIME: YES
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-L$(SRCROOT)/Vendor"
+          - "-lmd_ffi"
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Vendor"

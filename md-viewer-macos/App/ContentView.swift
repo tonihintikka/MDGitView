@@ -1,0 +1,100 @@
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct ContentView: View {
+    @ObservedObject var viewModel: ViewerViewModel
+    @State private var showImporter = false
+
+    var body: some View {
+        NavigationSplitView {
+            List {
+                Section("Table of Contents") {
+                    if viewModel.toc.isEmpty {
+                        Text("No headings")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(viewModel.toc) { item in
+                            Text(String(repeating: "  ", count: max(Int(item.level) - 1, 0)) + item.title)
+                                .font(.system(size: 12))
+                        }
+                    }
+                }
+
+                Section("Diagnostics") {
+                    if viewModel.diagnostics.isEmpty {
+                        Text("No warnings")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(viewModel.diagnostics) { diagnostic in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(diagnostic.message)
+                                    .font(.system(size: 12, weight: .semibold))
+                                if let resource = diagnostic.resource {
+                                    Text(resource)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Markdown")
+        } detail: {
+            Group {
+                if viewModel.isLoading {
+                    ProgressView("Rendering…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if !viewModel.htmlDocument.isEmpty {
+                    MarkdownWebView(htmlDocument: viewModel.htmlDocument, baseURL: viewModel.baseURL)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if !viewModel.rawMarkdown.isEmpty {
+                    ScrollView {
+                        Text(viewModel.rawMarkdown)
+                            .textSelection(.enabled)
+                            .font(.system(size: 13, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(20)
+                    }
+                } else {
+                    ContentUnavailableView("Open a Markdown file", systemImage: "doc.plaintext")
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if let errorMessage = viewModel.errorMessage {
+                    Text(errorMessage)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(8)
+                        .background(.regularMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(12)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Open…") {
+                        showImporter = true
+                    }
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [
+                UTType(filenameExtension: "md") ?? .plainText,
+                UTType(filenameExtension: "markdown") ?? .plainText,
+                .plainText
+            ],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let selected = urls.first else { return }
+                viewModel.openDocument(at: selected)
+            case .failure(let error):
+                viewModel.errorMessage = error.localizedDescription
+            }
+        }
+    }
+}
