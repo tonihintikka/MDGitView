@@ -1,8 +1,15 @@
-# md_viewer_editor_rust
+# MDGitView
 
-macOS Markdown viewer v1 with a Rust rendering core and SwiftUI + Quick Look integration.
+macOS Markdown viewer with a Rust rendering core and SwiftUI + Quick Look integration.
+Browse markdown files in your projects like you would on GitHub — with Mermaid diagrams, table of contents, and link navigation between documents.
 
-## Implemented scope
+**Created by Toni Hintikka together with Codex 5.3 and Claude Code (Opus 4.6).**
+
+## Download
+
+Grab the latest `.app` from [GitHub Releases](https://github.com/tonihintikka/MDGitView/releases).
+
+## Features
 
 - Rust renderer (`md-engine`) with:
   - GFM-oriented parsing (tables, task lists, autolinks, fenced code)
@@ -25,12 +32,6 @@ macOS Markdown viewer v1 with a Rust rendering core and SwiftUI + Quick Look int
   - sandbox entitlements
   - hardened runtime enabled in project config
   - notarization helper script (`scripts/notarize.sh`)
-
-## Current limitations
-
-- This repository includes minimal local stubs for Mermaid and MathJax runtime scripts.
-- For production parity, replace them with official vendored offline distributions (see `md-viewer-macos/Resources/ThirdParty/README.md`).
-- Toolchains are not currently installed in this environment (`cargo` missing, full Xcode missing), so build/test execution is not completed here.
 
 ## Project layout
 
@@ -66,3 +67,7 @@ If changes do not appear, reload Quick Look cache:
 
 - `qlmanage -r`
 - `qlmanage -r cache`
+
+## License
+
+MIT
