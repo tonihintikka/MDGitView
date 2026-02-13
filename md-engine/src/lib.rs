@@ -268,12 +268,12 @@ fn sanitize_html(html: &str) -> String {
     builder.add_tag_attributes("code", ["class"]);
     builder.add_tag_attributes("div", ["class"]);
     builder.add_tag_attributes("span", ["class"]);
-    builder.url_schemes(["http", "https", "mailto", "tel"]);
+    builder.url_schemes(["http", "https", "mailto", "tel"].into());
     builder.clean(html).to_string()
 }
 
 fn inject_heading_ids(html: &str, toc: &[TocItem]) -> String {
-    let regex = Regex::new(r"(?s)<h([1-6])>(.*?)</h\\1>").expect("valid heading regex");
+    let regex = Regex::new(r"(?s)<h([1-6])>(.*?)</h[1-6]>").expect("valid heading regex");
     let mut index = 0usize;
 
     regex
@@ -298,7 +298,7 @@ fn inject_heading_ids(html: &str, toc: &[TocItem]) -> String {
 }
 
 fn rewrite_mermaid_blocks(html: &str) -> String {
-    let regex = Regex::new(r"(?s)<pre><code class=\"language-mermaid\">(.*?)</code></pre>")
+    let regex = Regex::new(r#"(?s)<pre><code class="language-mermaid">(.*?)</code></pre>"#)
         .expect("valid mermaid regex");
     regex
         .replace_all(html, |caps: &regex::Captures<'_>| {
