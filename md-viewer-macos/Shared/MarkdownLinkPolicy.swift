@@ -7,11 +7,50 @@ enum MarkdownLinkPolicy {
 
     private static let externalSchemes: Set<String> = ["http", "https", "mailto", "tel"]
 
+    /// Names to look for when a link points to a directory, checked in order.
+    private static let directoryIndexNames = [
+        "README.md", "readme.md", "Readme.md",
+        "README.markdown", "readme.markdown",
+        "INDEX.md", "index.md"
+    ]
+
     static func markdownTargetURL(_ url: URL, currentFileURL: URL?) -> URL? {
         let resolved = resolveURL(url, currentFileURL: currentFileURL)
         guard resolved.isFileURL else { return nil }
-        guard markdownExtensions.contains(resolved.pathExtension.lowercased()) else { return nil }
-        return resolved
+
+        // Direct markdown file link
+        if markdownExtensions.contains(resolved.pathExtension.lowercased()) {
+            return resolved
+        }
+
+        // Directory link — look for a README inside
+        if let readmeURL = resolveDirectoryIndex(resolved) {
+            return readmeURL
+        }
+
+        return nil
+    }
+
+    /// If `url` points to a directory, return the first matching README/index file inside it.
+    private static func resolveDirectoryIndex(_ url: URL) -> URL? {
+        let manager = FileManager.default
+        let path = url.path
+
+        var isDir: ObjCBool = false
+        guard manager.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue else {
+            // Path without extension might be a directory that doesn't have a trailing slash.
+            // Also try appending nothing — the URL might already be correct but missing on disk.
+            return nil
+        }
+
+        for name in directoryIndexNames {
+            let candidate = url.appendingPathComponent(name)
+            if manager.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+        }
+
+        return nil
     }
 
     static func isExternalLink(_ url: URL) -> Bool {
