@@ -5,6 +5,8 @@ Browse markdown files in your projects like you would on GitHub — with Mermaid
 
 **Created by Toni Hintikka together with Codex 5.3 and Claude Code (Opus 4.6).**
 
+![MDGitView screenshot](docs/screenshot.png)
+
 ## Download
 
 Grab the latest `.app` from [GitHub Releases](https://github.com/tonihintikka/MDGitView/releases).
