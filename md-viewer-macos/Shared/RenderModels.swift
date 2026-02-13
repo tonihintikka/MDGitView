@@ -5,14 +5,16 @@ struct RenderOptions: Codable {
     let enable_mermaid: Bool
     let enable_math: Bool
     let base_dir: String?
+    let allowed_root_dir: String?
     let theme: String
 
-    static func defaults(baseDirectory: URL?) -> RenderOptions {
+    static func defaults(baseDirectory: URL?, allowedRootDirectory: URL?) -> RenderOptions {
         RenderOptions(
             enable_gfm: true,
             enable_mermaid: true,
             enable_math: true,
             base_dir: baseDirectory?.path,
+            allowed_root_dir: allowedRootDirectory?.path,
             theme: "github-light"
         )
     }

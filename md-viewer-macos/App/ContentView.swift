@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 
 struct ContentView: View {
     @ObservedObject var viewModel: ViewerViewModel
@@ -14,8 +15,14 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(viewModel.toc) { item in
-                            Text(String(repeating: "  ", count: max(Int(item.level) - 1, 0)) + item.title)
-                                .font(.system(size: 12))
+                            Button {
+                                viewModel.navigateToAnchor(item.anchor)
+                            } label: {
+                                Text(String(repeating: "  ", count: max(Int(item.level) - 1, 0)) + item.title)
+                                    .font(.system(size: 12))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -47,7 +54,21 @@ struct ContentView: View {
                     ProgressView("Rendering…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if !viewModel.htmlDocument.isEmpty {
-                    MarkdownWebView(htmlDocument: viewModel.htmlDocument, baseURL: viewModel.baseURL)
+                    MarkdownWebView(
+                        htmlDocument: viewModel.htmlDocument,
+                        baseURL: viewModel.baseURL,
+                        currentFileURL: viewModel.fileURL,
+                        navigateToAnchor: viewModel.requestedAnchor,
+                        onOpenMarkdownLink: { linkURL in
+                            viewModel.openDocument(at: linkURL)
+                        },
+                        onOpenExternalLink: { linkURL in
+                            NSWorkspace.shared.open(linkURL)
+                        },
+                        onDidNavigateToAnchor: {
+                            viewModel.clearAnchorRequest()
+                        }
+                    )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if !viewModel.rawMarkdown.isEmpty {
                     ScrollView {
@@ -72,6 +93,26 @@ struct ContentView: View {
                 }
             }
             .toolbar {
+                ToolbarItemGroup(placement: .navigation) {
+                    Button {
+                        viewModel.goBack()
+                    } label: {
+                        Image(systemName: "chevron.backward")
+                    }
+                    .help("Back")
+                    .disabled(!viewModel.canGoBack)
+                    .keyboardShortcut("[", modifiers: [.command])
+
+                    Button {
+                        viewModel.goForward()
+                    } label: {
+                        Image(systemName: "chevron.forward")
+                    }
+                    .help("Forward")
+                    .disabled(!viewModel.canGoForward)
+                    .keyboardShortcut("]", modifiers: [.command])
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     Button("Open…") {
                         showImporter = true
@@ -91,7 +132,7 @@ struct ContentView: View {
             switch result {
             case .success(let urls):
                 guard let selected = urls.first else { return }
-                viewModel.openDocument(at: selected)
+                viewModel.openDocumentFromPicker(at: selected)
             case .failure(let error):
                 viewModel.errorMessage = error.localizedDescription
             }

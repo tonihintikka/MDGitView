@@ -22,6 +22,13 @@ final class MarkdownRenderService {
     }
 
     func render(fileURL: URL) async throws -> RenderedPayload {
+        let hasSecurityScope = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if hasSecurityScope {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
         guard let data = try? Data(contentsOf: fileURL) else {
             throw MarkdownRenderServiceError.unreadableFile
         }
@@ -31,7 +38,11 @@ final class MarkdownRenderService {
         }
 
         let baseDirectory = fileURL.deletingLastPathComponent()
-        let options = RenderOptions.defaults(baseDirectory: baseDirectory)
+        let allowedRootDirectory = resolveAllowedRootDirectory(for: baseDirectory)
+        let options = RenderOptions.defaults(
+            baseDirectory: baseDirectory,
+            allowedRootDirectory: allowedRootDirectory
+        )
         let rendered = try RustMarkdownFFI.render(markdown: markdown, options: options)
 
         let htmlDocument = buildHTMLDocument(
@@ -94,13 +105,36 @@ final class MarkdownRenderService {
     }
 
     private func loadResource(named: String, ext: String) -> String {
-        guard let url = bundle.url(forResource: named, withExtension: ext, subdirectory: "Assets"),
-              let data = try? Data(contentsOf: url),
-              let text = String(data: data, encoding: .utf8)
-        else {
-            return ""
+        let candidates: [URL?] = [
+            bundle.url(forResource: named, withExtension: ext, subdirectory: "Assets"),
+            bundle.url(forResource: named, withExtension: ext)
+        ]
+
+        for url in candidates.compactMap({ $0 }) {
+            if let data = try? Data(contentsOf: url),
+               let text = String(data: data, encoding: .utf8) {
+                return text
+            }
         }
 
-        return text
+        return ""
+    }
+
+    private func resolveAllowedRootDirectory(for baseDirectory: URL) -> URL {
+        var cursor = baseDirectory.standardizedFileURL
+        let manager = FileManager.default
+
+        while true {
+            let gitDirectory = cursor.appendingPathComponent(".git", isDirectory: true)
+            if manager.fileExists(atPath: gitDirectory.path) {
+                return cursor
+            }
+
+            let parent = cursor.deletingLastPathComponent()
+            if parent.path == cursor.path {
+                return baseDirectory
+            }
+            cursor = parent
+        }
     }
 }

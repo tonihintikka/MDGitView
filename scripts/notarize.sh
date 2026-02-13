@@ -6,7 +6,7 @@ if [[ $# -lt 5 ]]; then
 Usage: $0 <app-path> <bundle-id> <apple-id> <team-id> <app-password>
 
 Example:
-  $0 build/MDViewer.app com.toni.mdviewer you@example.com TEAM1234 abcd-efgh-ijkl-mnop
+  $0 build/MDGitView.app com.toni.mdgitview you@example.com TEAM1234 abcd-efgh-ijkl-mnop
 USAGE
   exit 1
 fi

@@ -1,4 +1,4 @@
-name: MDViewerMacOS
+name: MDGitView
 options:
   minimumXcodeGenVersion: 2.38.0
   deploymentTarget:
@@ -9,11 +9,25 @@ settings:
     MARKETING_VERSION: 0.1.0
     CURRENT_PROJECT_VERSION: 1
 targets:
-  MDViewer:
+  MDGitView:
     type: application
     platform: macOS
     info:
       path: Config/MDViewer-Info.plist
+      properties:
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown Document
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - public.markdown
+              - net.daringfireball.markdown
+            CFBundleTypeExtensions:
+              - md
+              - markdown
+              - mdown
+              - mkd
+              - mkdn
     entitlements:
       path: Config/MDViewer.entitlements
     sources:
@@ -22,9 +36,10 @@ targets:
       - path: Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdviewer
+        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdgitview
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         OTHER_LDFLAGS:
           - "$(inherited)"
           - "-L$(SRCROOT)/Vendor"
@@ -54,6 +69,14 @@ targets:
     platform: macOS
     info:
       path: Config/MarkdownPreviewExtension-Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.preview
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).MarkdownPreviewViewController"
+          NSExtensionAttributes:
+            QLSupportedContentTypes:
+              - public.markdown
+              - net.daringfireball.markdown
     entitlements:
       path: Config/MarkdownPreviewExtension.entitlements
     sources:
@@ -62,7 +85,7 @@ targets:
       - path: Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdviewer.preview
+        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdgitview.preview
         ENABLE_HARDENED_RUNTIME: YES
         OTHER_LDFLAGS:
           - "$(inherited)"
@@ -77,6 +100,14 @@ targets:
     platform: macOS
     info:
       path: Config/MarkdownThumbnailExtension-Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.thumbnail
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).MarkdownThumbnailProvider"
+          NSExtensionAttributes:
+            QLSupportedContentTypes:
+              - public.markdown
+              - net.daringfireball.markdown
     entitlements:
       path: Config/MarkdownThumbnailExtension.entitlements
     sources:
@@ -85,7 +116,7 @@ targets:
       - path: Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdviewer.thumbnail
+        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdgitview.thumbnail
         ENABLE_HARDENED_RUNTIME: YES
         OTHER_LDFLAGS:
           - "$(inherited)"

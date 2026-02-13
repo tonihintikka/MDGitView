@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --fg: #1f2328;
   --bg: #ffffff;
   --muted: #59636e;
@@ -7,14 +7,16 @@
   --code-bg: #f6f8fa;
   --blockquote: #656d76;
   --accent: #0969da;
+  --table-head-bg: #f6f8fa;
+  --mermaid-bg: #fafbfc;
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--bg) !important;
+  color: var(--fg) !important;
   font-family: "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -101,7 +103,7 @@ body {
 }
 
 .markdown-body th {
-  background: #f6f8fa;
+  background: var(--table-head-bg);
   text-align: left;
 }
 
@@ -121,9 +123,34 @@ body {
   display: block;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fafbfc;
+  background: var(--mermaid-bg);
   padding: 12px;
   overflow-x: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre;
+}
+
+.markdown-body .mermaid[data-processed="true"],
+.markdown-body .mermaid svg {
+  font-family: "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  white-space: normal;
+  background: transparent;
+}
+
+.markdown-body .mermaid[data-processed="true"] {
+  text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e6edf3;
+    --bg: #0d1117;
+    --muted: #9da7b3;
+    --border: #30363d;
+    --code-bg: #161b22;
+    --blockquote: #8b949e;
+    --accent: #58a6ff;
+    --table-head-bg: #161b22;
+    --mermaid-bg: #11161c;
+  }
 }

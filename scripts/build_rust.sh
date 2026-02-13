@@ -8,16 +8,24 @@ if [[ "${CONFIGURATION}" == "Release" ]]; then
   PROFILE="release"
 fi
 
+# Xcode build phases often run with a minimal PATH, so load rustup env if present.
+if ! command -v cargo >/dev/null 2>&1 && [[ -f "${HOME}/.cargo/env" ]]; then
+  # shellcheck disable=SC1090
+  . "${HOME}/.cargo/env"
+fi
+
 if ! command -v cargo >/dev/null 2>&1; then
   echo "error: cargo not found. Install Rust toolchain before building." >&2
   exit 1
 fi
 
+CARGO_BIN="$(command -v cargo)"
+
 pushd "${ROOT_DIR}" >/dev/null
 if [[ "${PROFILE}" == "release" ]]; then
-  cargo build -p md-ffi --release
+  "${CARGO_BIN}" build -p md-ffi --release
 else
-  cargo build -p md-ffi
+  "${CARGO_BIN}" build -p md-ffi
 fi
 popd >/dev/null
 

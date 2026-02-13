@@ -28,21 +28,21 @@ final class MarkdownThumbnailProvider: QLThumbnailProvider {
             cardPath.lineWidth = 1
             cardPath.stroke()
 
-            draw(
+            self.draw(
                 text: title,
                 in: CGRect(x: card.minX + 16, y: card.maxY - 62, width: card.width - 32, height: 46),
                 font: .boldSystemFont(ofSize: 18),
                 color: NSColor.labelColor
             )
 
-            draw(
+            self.draw(
                 text: subtitle,
                 in: CGRect(x: card.minX + 16, y: card.minY + 16, width: card.width - 32, height: 22),
                 font: .systemFont(ofSize: 12, weight: .medium),
                 color: NSColor.secondaryLabelColor
             )
 
-            draw(
+            self.draw(
                 text: "Markdown",
                 in: CGRect(x: card.minX + 16, y: card.minY + 42, width: card.width - 32, height: 20),
                 font: .monospacedSystemFont(ofSize: 12, weight: .regular),

@@ -7,7 +7,7 @@ macOS Markdown viewer v1 with a Rust rendering core and SwiftUI + Quick Look int
 - Rust renderer (`md-engine`) with:
   - GFM-oriented parsing (tables, task lists, autolinks, fenced code)
   - HTML sanitization
-  - same-directory local resource policy for links/images
+  - local-base resource policy for links/images (`..`, absolute paths, and unsafe schemes blocked)
   - TOC generation and diagnostics
   - Mermaid code block rewrite hooks
 - Rust C-ABI bridge (`md-ffi`):
@@ -53,7 +53,7 @@ macOS Markdown viewer v1 with a Rust rendering core and SwiftUI + Quick Look int
    - `./scripts/build_rust.sh Debug`
 5. Generate Xcode project:
    - `cd md-viewer-macos && xcodegen generate`
-6. Open generated project and run `MDViewer` target.
+6. Open generated project and run `MDGitView` target.
 
 ## Quick Look checks
 

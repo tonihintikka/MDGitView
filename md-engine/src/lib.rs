@@ -17,6 +17,8 @@ pub struct RenderOptions {
     pub enable_math: bool,
     #[serde(default)]
     pub base_dir: Option<PathBuf>,
+    #[serde(default)]
+    pub allowed_root_dir: Option<PathBuf>,
     #[serde(default = "default_theme")]
     pub theme: String,
 }
@@ -63,6 +65,7 @@ impl Default for RenderOptions {
             enable_mermaid: true,
             enable_math: true,
             base_dir: None,
+            allowed_root_dir: None,
             theme: default_theme(),
         }
     }
@@ -89,7 +92,12 @@ pub fn render_markdown(input: &str, opts: &RenderOptions) -> Result<RenderedDocu
     let toc = collect_toc(input);
 
     let mut diagnostics = Vec::new();
-    html_content = enforce_resource_policy(&html_content, opts.base_dir.as_deref(), &mut diagnostics);
+    html_content = enforce_resource_policy(
+        &html_content,
+        opts.base_dir.as_deref(),
+        opts.allowed_root_dir.as_deref(),
+        &mut diagnostics,
+    );
     html_content = sanitize_html(&html_content);
     html_content = inject_heading_ids(&html_content, &toc);
 
@@ -100,19 +108,24 @@ pub fn render_markdown(input: &str, opts: &RenderOptions) -> Result<RenderedDocu
     })
 }
 
-fn enforce_resource_policy(html: &str, base_dir: Option<&Path>, diagnostics: &mut Vec<Diagnostic>) -> String {
+fn enforce_resource_policy(
+    html: &str,
+    base_dir: Option<&Path>,
+    allowed_root_dir: Option<&Path>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> String {
     let link_regex = Regex::new(r#"(<a[^>]*\shref=")([^"]*)(")"#).expect("valid link regex");
     let image_regex = Regex::new(r#"(<img[^>]*\ssrc=")([^"]*)(")"#).expect("valid image regex");
 
     let with_links = link_regex
         .replace_all(html, |caps: &regex::Captures<'_>| {
             let url = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-            if is_allowed_resource(url, base_dir) {
+            if is_allowed_resource(url, base_dir, allowed_root_dir) {
                 caps.get(0).map(|m| m.as_str()).unwrap_or_default().to_string()
             } else {
                 diagnostics.push(Diagnostic {
                     code: "blocked_resource".to_string(),
-                    message: "Link blocked by same-directory policy".to_string(),
+                    message: "Link blocked by local-base policy".to_string(),
                     resource: Some(url.to_string()),
                 });
                 format!(
@@ -127,12 +140,12 @@ fn enforce_resource_policy(html: &str, base_dir: Option<&Path>, diagnostics: &mu
     image_regex
         .replace_all(&with_links, |caps: &regex::Captures<'_>| {
             let url = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-            if is_allowed_resource(url, base_dir) {
+            if is_allowed_resource(url, base_dir, allowed_root_dir) {
                 caps.get(0).map(|m| m.as_str()).unwrap_or_default().to_string()
             } else {
                 diagnostics.push(Diagnostic {
                     code: "blocked_resource".to_string(),
-                    message: "Image blocked by same-directory policy".to_string(),
+                    message: "Image blocked by local-base policy".to_string(),
                     resource: Some(url.to_string()),
                 });
                 format!(
@@ -145,7 +158,7 @@ fn enforce_resource_policy(html: &str, base_dir: Option<&Path>, diagnostics: &mu
         .to_string()
 }
 
-fn is_allowed_resource(url: &str, base_dir: Option<&Path>) -> bool {
+fn is_allowed_resource(url: &str, base_dir: Option<&Path>, allowed_root_dir: Option<&Path>) -> bool {
     if url.is_empty() || url.starts_with('#') {
         return true;
     }
@@ -175,26 +188,49 @@ fn is_allowed_resource(url: &str, base_dir: Option<&Path>) -> bool {
     };
 
     let raw_path = url.split(['?', '#']).next().unwrap_or_default();
-    let candidate = Path::new(raw_path);
-
-    if candidate.as_os_str().is_empty() {
+    if raw_path.is_empty() {
         return true;
     }
 
-    let mut normal_components = Vec::new();
-    for component in candidate.components() {
-        match component {
-            Component::Normal(value) => normal_components.push(value.to_os_string()),
-            _ => return false,
-        }
-    }
-
-    if normal_components.len() != 1 {
+    let candidate = Path::new(raw_path);
+    if candidate.is_absolute() {
         return false;
     }
 
-    let joined = base_dir.join(candidate);
-    joined.parent() == Some(base_dir)
+    let Some(joined) = normalize_path(&base_dir.join(candidate)) else {
+        return false;
+    };
+
+    let boundary = allowed_root_dir.unwrap_or(base_dir);
+    let Some(normalized_boundary) = canonical_or_normalized(boundary) else {
+        return false;
+    };
+
+    let normalized_target = joined.canonicalize().ok().unwrap_or(joined);
+    normalized_target.starts_with(normalized_boundary)
+}
+
+fn canonical_or_normalized(path: &Path) -> Option<PathBuf> {
+    path.canonicalize().ok().or_else(|| normalize_path(path))
+}
+
+fn normalize_path(path: &Path) -> Option<PathBuf> {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Prefix(prefix) => normalized.push(prefix.as_os_str()),
+            Component::RootDir => normalized.push(Path::new("/")),
+            Component::CurDir => {}
+            Component::Normal(value) => normalized.push(value),
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    return None;
+                }
+            }
+        }
+    }
+
+    Some(normalized)
 }
 
 fn collect_toc(input: &str) -> Vec<TocItem> {
@@ -325,7 +361,7 @@ mod tests {
 
     #[test]
     fn blocks_non_local_relative_paths() {
-        let input = "![x](../secret.png)\n[bad](subdir/file.txt)\n[ok](same.md)";
+        let input = "![x](../secret.png)\n[bad](/etc/passwd)\n[ok](same.md)\n[subdir](docs/file.md)";
         let options = RenderOptions {
             base_dir: Some(PathBuf::from("/tmp/base")),
             ..RenderOptions::default()
@@ -334,6 +370,21 @@ mod tests {
         let output = render_markdown(input, &options).expect("render should pass");
         assert_eq!(output.diagnostics.len(), 2);
         assert!(output.html.contains("same.md"));
+        assert!(output.html.contains("docs/file.md"));
+    }
+
+    #[test]
+    fn allows_parent_links_within_allowed_root() {
+        let input = "[ok](../background-knowledge/topic.md)\n[blocked](../../outside.md)";
+        let options = RenderOptions {
+            base_dir: Some(PathBuf::from("/tmp/repo/docs/standards")),
+            allowed_root_dir: Some(PathBuf::from("/tmp/repo/docs")),
+            ..RenderOptions::default()
+        };
+
+        let output = render_markdown(input, &options).expect("render should pass");
+        assert_eq!(output.diagnostics.len(), 1);
+        assert!(output.html.contains("../background-knowledge/topic.md"));
     }
 
     #[test]
