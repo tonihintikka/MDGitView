@@ -126,9 +126,9 @@ Requirements:
 Preview extension:
 
 - `PreviewExtension/MarkdownPreviewViewController.swift`
-- Implement `QLPreviewingController` + `WKNavigationDelegate`.
+- Implement `QLPreviewProvider` + `QLPreviewingController`.
 - Reuse same `MarkdownRenderService`.
-- Support local markdown link follow and external link open.
+- Return HTML via `QLPreviewReply` in `providePreview(for:completionHandler:)`.
 
 Thumbnail extension:
 

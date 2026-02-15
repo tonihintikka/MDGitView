@@ -1,9 +1,11 @@
+import AppKit
 import Foundation
 
 @MainActor
 final class ViewerViewModel: ObservableObject {
     @Published var fileURL: URL?
     @Published var baseURL: URL?
+    @Published var allowedRootURL: URL?
     @Published var htmlDocument: String = ""
     @Published var rawMarkdown: String = ""
     @Published var diagnostics: [RenderDiagnostic] = []
@@ -13,6 +15,7 @@ final class ViewerViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var canGoBack = false
     @Published var canGoForward = false
+    @Published var needsFolderAccess = false
 
     private let renderService = MarkdownRenderService()
     private var backHistory: [URL] = []
@@ -55,6 +58,62 @@ final class ViewerViewModel: ObservableObject {
 
     func clearAnchorRequest() {
         requestedAnchor = nil
+    }
+
+    /// Called when WebView cannot write a temp file to load images.
+    /// Shows an NSOpenPanel so the user can grant folder access.
+    func requestFolderAccess() {
+        needsFolderAccess = true
+    }
+
+    func grantFolderAccess() {
+        guard let directory = allowedRootURL ?? baseURL else { return }
+
+        let panel = NSOpenPanel()
+        panel.message = "MDGitView needs access to this folder to display images."
+        panel.prompt = "Allow"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = directory
+        panel.canCreateDirectories = false
+
+        panel.begin { [weak self] response in
+            guard let self, response == .OK, let _ = panel.url else { return }
+            Task { @MainActor in
+                self.needsFolderAccess = false
+                // Re-render to trigger a new loadFileURL attempt with the granted access
+                if let fileURL = self.fileURL {
+                    self.reloadCurrentDocument(at: fileURL)
+                }
+            }
+        }
+    }
+
+    private func reloadCurrentDocument(at url: URL) {
+        renderTask?.cancel()
+        isLoading = true
+        errorMessage = nil
+
+        renderTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let payload = try await self.renderService.render(fileURL: url)
+                if Task.isCancelled { return }
+
+                self.htmlDocument = payload.htmlDocument
+                self.rawMarkdown = ""
+                self.diagnostics = payload.diagnostics
+                self.toc = payload.toc
+                self.baseURL = payload.baseURL
+                self.allowedRootURL = payload.allowedRootURL
+                self.isLoading = false
+            } catch {
+                if Task.isCancelled { return }
+                self.errorMessage = error.localizedDescription
+                self.isLoading = false
+            }
+        }
     }
 
     private enum HistoryAction {
@@ -106,6 +165,7 @@ final class ViewerViewModel: ObservableObject {
                 self.diagnostics = payload.diagnostics
                 self.toc = payload.toc
                 self.baseURL = payload.baseURL
+                self.allowedRootURL = payload.allowedRootURL
                 self.requestedAnchor = anchor
                 self.isLoading = false
             } catch {
@@ -117,6 +177,7 @@ final class ViewerViewModel: ObservableObject {
                 self.diagnostics = []
                 self.toc = []
                 self.baseURL = nil
+                self.allowedRootURL = nil
                 self.requestedAnchor = nil
                 self.isLoading = false
             }

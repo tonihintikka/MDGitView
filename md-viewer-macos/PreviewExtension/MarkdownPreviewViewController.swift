@@ -1,129 +1,79 @@
-import Cocoa
+import CoreGraphics
+import Foundation
 import QuickLookUI
-import WebKit
+import UniformTypeIdentifiers
 
-final class MarkdownPreviewViewController: NSViewController, QLPreviewingController, WKNavigationDelegate, WKUIDelegate {
+final class MarkdownPreviewProvider: QLPreviewProvider, QLPreviewingController {
     private let renderService = MarkdownRenderService()
-    private var currentFileURL: URL?
-    private let webView: WKWebView = {
-        let configuration = WKWebViewConfiguration()
-        let preferences = WKWebpagePreferences()
-        preferences.allowsContentJavaScript = true
-        configuration.defaultWebpagePreferences = preferences
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.translatesAutoresizingMaskIntoConstraints = false
-        return webView
-    }()
-
-    override func loadView() {
-        view = NSView()
-        view.addSubview(webView)
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
-
-        NSLayoutConstraint.activate([
-            webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            webView.topAnchor.constraint(equalTo: view.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-    }
-
-    func preparePreviewOfFile(at url: URL, completionHandler handler: @escaping (Error?) -> Void) {
-        openMarkdownLink(url) { error in
-            handler(error)
-        }
-    }
-
-    func webView(
-        _ webView: WKWebView,
-        decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    func providePreview(
+        for request: QLFilePreviewRequest,
+        completionHandler handler: @escaping (QLPreviewReply?, Error?) -> Void
     ) {
-        guard navigationAction.navigationType == .linkActivated,
-              let targetURL = navigationAction.request.url
-        else {
-            decisionHandler(.allow)
-            return
-        }
-
-        if MarkdownLinkPolicy.isInPageAnchor(targetURL, currentFileURL: currentFileURL) {
-            decisionHandler(.allow)
-            return
-        }
-
-        if let markdownTargetURL = MarkdownLinkPolicy.markdownTargetURL(
-            targetURL,
-            currentFileURL: currentFileURL
-        ) {
-            openMarkdownLink(markdownTargetURL)
-            decisionHandler(.cancel)
-            return
-        }
-
-        if MarkdownLinkPolicy.isExternalLink(targetURL) {
-            // Quick Look preview runs in a constrained extension sandbox.
-            // Avoid launching external URLs from here to prevent WebContent
-            // launchservices denial churn and connection invalidation.
-            decisionHandler(.cancel)
-            return
-        }
-
-        decisionHandler(.cancel)
-    }
-
-    func webView(
-        _ webView: WKWebView,
-        createWebViewWith configuration: WKWebViewConfiguration,
-        for navigationAction: WKNavigationAction,
-        windowFeatures: WKWindowFeatures
-    ) -> WKWebView? {
-        guard let targetURL = navigationAction.request.url else {
-            return nil
-        }
-
-        if MarkdownLinkPolicy.isInPageAnchor(targetURL, currentFileURL: currentFileURL) {
-            webView.load(navigationAction.request)
-            return nil
-        }
-
-        if let markdownTargetURL = MarkdownLinkPolicy.markdownTargetURL(
-            targetURL,
-            currentFileURL: currentFileURL
-        ) {
-            openMarkdownLink(markdownTargetURL)
-            return nil
-        }
-
-        // Block all non-markdown popup/new-window navigations in preview extension.
-        return nil
-    }
-
-    private func openMarkdownLink(_ url: URL, completion: ((Error?) -> Void)? = nil) {
         Task {
             do {
-                let payload = try await renderService.render(fileURL: url)
-                await MainActor.run {
-                    self.currentFileURL = url
-                    _ = self.webView.loadHTMLString(payload.htmlDocument, baseURL: payload.baseURL)
-                    completion?(nil)
+                let payload = try await renderService.render(fileURL: request.fileURL)
+                let html = injectBaseURL(payload.htmlDocument, baseURL: payload.baseURL)
+                let reply = QLPreviewReply(dataOfContentType: .html, contentSize: .zero) { _ in
+                    Data(html.utf8)
                 }
+                reply.title = request.fileURL.lastPathComponent
+                handler(reply, nil)
             } catch {
-                await MainActor.run {
-                    let message = error.localizedDescription.replacingOccurrences(of: "<", with: "&lt;")
-                        .replacingOccurrences(of: ">", with: "&gt;")
-                    let fallback = """
-                    <!doctype html>
-                    <html><body style="font-family: -apple-system; padding: 16px;">
-                    <h3>Unable to open linked Markdown</h3>
-                    <p>\(message)</p>
-                    </body></html>
-                    """
-                    _ = self.webView.loadHTMLString(fallback, baseURL: nil)
-                    completion?(error)
+                let fallback = fallbackHTML(for: request.fileURL.lastPathComponent, error: error)
+                let reply = QLPreviewReply(dataOfContentType: .html, contentSize: .zero) { _ in
+                    Data(fallback.utf8)
                 }
+                reply.title = request.fileURL.lastPathComponent
+                handler(reply, nil)
             }
         }
+    }
+
+    private func injectBaseURL(_ html: String, baseURL: URL?) -> String {
+        guard let baseURL else {
+            return html
+        }
+
+        let escapedBase = baseURL.absoluteString
+            .replacingOccurrences(of: "\"", with: "&quot;")
+
+        let baseTag = "<base href=\"\(escapedBase)\">"
+        if html.contains("<head>") {
+            return html.replacingOccurrences(of: "<head>", with: "<head>\n  \(baseTag)")
+        }
+
+        if html.contains("<html>") {
+            return html.replacingOccurrences(of: "<html>", with: "<html>\n<head>\n  \(baseTag)\n</head>")
+        }
+
+        return "<head>\(baseTag)</head>\n\(html)"
+    }
+
+    private func fallbackHTML(for fileName: String, error: Error) -> String {
+        let escapedMessage = error.localizedDescription
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+
+        let escapedFileName = fileName
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+
+        return """
+        <!doctype html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+        </head>
+        <body style="font-family: -apple-system; padding: 20px;">
+          <h3>Preview unavailable</h3>
+          <p><strong>File:</strong> \(escapedFileName)</p>
+          <p>\(escapedMessage)</p>
+        </body>
+        </html>
+        """
     }
 }

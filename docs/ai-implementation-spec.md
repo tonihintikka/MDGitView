@@ -186,10 +186,9 @@ File:
 
 Features:
 
-- Implements `QLPreviewingController`.
-- Renders the same HTML pipeline as app.
-- Supports local Markdown link navigation inside preview.
-- Opens external links in default browser.
+- Principal object subclasses `QLPreviewProvider` and conforms to `QLPreviewingController`.
+- Uses `providePreview(for:completionHandler:)` data-based preview flow.
+- Renders the same HTML pipeline as app and returns HTML through `QLPreviewReply`.
 
 ## 4.8 Quick Look Thumbnail extension
 
@@ -211,7 +210,7 @@ Required keys (conceptually):
 
 - For preview extension:
   - `NSExtensionPointIdentifier = com.apple.quicklook.preview`
-  - `NSExtensionPrincipalClass = <module>.MarkdownPreviewViewController`
+  - `NSExtensionPrincipalClass = <module>.MarkdownPreviewProvider`
   - `QLSupportedContentTypes` includes Markdown UTI(s)
 - For thumbnail extension:
   - `NSExtensionPointIdentifier = com.apple.quicklook.thumbnail`

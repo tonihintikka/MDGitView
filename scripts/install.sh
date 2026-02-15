@@ -8,6 +8,7 @@ BUILD_DIR="${DERIVED_DATA}/Build/Products/Debug"
 SOURCE_APP="${BUILD_DIR}/${APP_NAME}"
 DEST_DIR="/Applications"
 DEST_APP="${DEST_DIR}/${APP_NAME}"
+CODE_SIGNING_ALLOWED_VALUE="${CODE_SIGNING_ALLOWED:-NO}"
 
 # Build Rust FFI first
 echo "==> Building Rust FFI..."
@@ -21,11 +22,28 @@ popd >/dev/null
 
 # Build the app
 echo "==> Building MDGitView..."
+XCODEBUILD_ARGS=(
+  -project "${ROOT_DIR}/md-viewer-macos/MDGitView.xcodeproj"
+  -scheme MDGitView
+  -configuration Debug
+  -derivedDataPath "${DERIVED_DATA}"
+  "CODE_SIGNING_ALLOWED=${CODE_SIGNING_ALLOWED_VALUE}"
+)
+
+if [[ -n "${DEVELOPMENT_TEAM:-}" ]]; then
+  XCODEBUILD_ARGS+=("DEVELOPMENT_TEAM=${DEVELOPMENT_TEAM}")
+fi
+
+if [[ -n "${CODE_SIGN_IDENTITY:-}" ]]; then
+  XCODEBUILD_ARGS+=("CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY}")
+fi
+
+if [[ -n "${CODE_SIGN_STYLE:-}" ]]; then
+  XCODEBUILD_ARGS+=("CODE_SIGN_STYLE=${CODE_SIGN_STYLE}")
+fi
+
 xcodebuild \
-  -project "${ROOT_DIR}/md-viewer-macos/MDGitView.xcodeproj" \
-  -scheme MDGitView \
-  -configuration Debug \
-  -derivedDataPath "${DERIVED_DATA}" \
+  "${XCODEBUILD_ARGS[@]}" \
   build 2>&1 | tail -5
 
 if [ ! -d "${SOURCE_APP}" ]; then

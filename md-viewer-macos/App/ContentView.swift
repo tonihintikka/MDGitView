@@ -57,6 +57,7 @@ struct ContentView: View {
                     MarkdownWebView(
                         htmlDocument: viewModel.htmlDocument,
                         baseURL: viewModel.baseURL,
+                        allowedRootURL: viewModel.allowedRootURL,
                         currentFileURL: viewModel.fileURL,
                         navigateToAnchor: viewModel.requestedAnchor,
                         onOpenMarkdownLink: { linkURL in
@@ -67,6 +68,9 @@ struct ContentView: View {
                         },
                         onDidNavigateToAnchor: {
                             viewModel.clearAnchorRequest()
+                        },
+                        onRequestFolderAccess: {
+                            viewModel.requestFolderAccess()
                         }
                     )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -83,14 +87,34 @@ struct ContentView: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.system(size: 12, weight: .semibold))
+                VStack(alignment: .leading, spacing: 8) {
+                    if viewModel.needsFolderAccess {
+                        HStack(spacing: 8) {
+                            Image(systemName: "photo.badge.exclamationmark")
+                                .foregroundStyle(.orange)
+                            Text("Images cannot be displayed.")
+                                .font(.system(size: 12, weight: .semibold))
+                            Button("Grant Folder Access") {
+                                viewModel.grantFolderAccess()
+                            }
+                            .font(.system(size: 12))
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
                         .padding(8)
                         .background(.regularMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .padding(12)
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(8)
+                            .background(.regularMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
                 }
+                .padding(12)
             }
             .toolbar {
                 ToolbarItemGroup(placement: .navigation) {

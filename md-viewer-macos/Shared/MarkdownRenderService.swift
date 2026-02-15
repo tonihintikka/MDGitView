@@ -56,7 +56,8 @@ final class MarkdownRenderService {
             htmlDocument: htmlDocument,
             toc: rendered.toc,
             diagnostics: rendered.diagnostics,
-            baseURL: baseDirectory
+            baseURL: baseDirectory,
+            allowedRootURL: allowedRootDirectory
         )
     }
 

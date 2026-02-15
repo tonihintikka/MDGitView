@@ -49,4 +49,5 @@ struct RenderedPayload {
     let toc: [TocItem]
     let diagnostics: [RenderDiagnostic]
     let baseURL: URL?
+    let allowedRootURL: URL?
 }

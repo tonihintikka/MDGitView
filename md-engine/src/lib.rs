@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 
-use ammonia::Builder;
+use ammonia::{Builder, UrlRelative};
 use pulldown_cmark::{html, Options, Parser};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -305,6 +305,7 @@ fn sanitize_html(html: &str) -> String {
     builder.add_tag_attributes("div", ["class"]);
     builder.add_tag_attributes("span", ["class"]);
     builder.url_schemes(["http", "https", "mailto", "tel"].into());
+    builder.url_relative(UrlRelative::PassThrough);
     builder.clean(html).to_string()
 }
 
@@ -412,6 +413,24 @@ mod tests {
 
         assert!(output.html.contains("E=mc^2"));
         assert!(output.html.contains("a^2 + b^2 = c^2"));
+    }
+
+    #[test]
+    fn preserves_relative_image_src_after_sanitization() {
+        let input = "![Tool Lock-in Spectrum](analysis/data/figures/fig-lock-in-spectrum.png)";
+        let options = RenderOptions {
+            base_dir: Some(PathBuf::from("/tmp/repo")),
+            allowed_root_dir: Some(PathBuf::from("/tmp/repo")),
+            ..RenderOptions::default()
+        };
+        let output = render_markdown(input, &options).expect("render should pass");
+        eprintln!("HTML output: {}", output.html);
+        assert!(
+            output.html.contains(r#"src="analysis/data/figures/fig-lock-in-spectrum.png""#),
+            "Image src should be preserved. Got: {}",
+            output.html
+        );
+        assert!(output.diagnostics.is_empty(), "No diagnostics expected");
     }
 
     #[test]

@@ -4,11 +4,13 @@ import WebKit
 struct MarkdownWebView: NSViewRepresentable {
     let htmlDocument: String
     let baseURL: URL?
+    let allowedRootURL: URL?
     let currentFileURL: URL?
     let navigateToAnchor: String?
     let onOpenMarkdownLink: (URL) -> Void
     let onOpenExternalLink: (URL) -> Void
     let onDidNavigateToAnchor: () -> Void
+    var onRequestFolderAccess: (() -> Void)?
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         var parent: MarkdownWebView
@@ -17,10 +19,52 @@ struct MarkdownWebView: NSViewRepresentable {
         var lastLoadedBaseURL: URL?
         var pendingAnchor: String?
         var lastHandledAnchor: String?
+        private var tempFileURL: URL?
 
         init(parent: MarkdownWebView) {
             self.parent = parent
         }
+
+        deinit {
+            cleanupTempFile()
+        }
+
+        // MARK: - Temp file management
+
+        func cleanupTempFile() {
+            if let url = tempFileURL {
+                try? FileManager.default.removeItem(at: url)
+                tempFileURL = nil
+            }
+        }
+
+        /// Write HTML to a temp file and load via loadFileURL for local image access.
+        /// Returns true if successful, false if fallback is needed.
+        func loadViaFileURL(html: String, baseURL: URL?, allowedRootURL: URL?, in webView: WKWebView) -> Bool {
+            guard let baseURL = baseURL else {
+                return false
+            }
+
+            // Determine the broadest directory the WebView may read from.
+            // allowedRootURL (git repo root) covers images referenced via ../
+            let readAccessURL = allowedRootURL ?? baseURL
+
+            // Write HTML to a hidden temp file inside the baseURL directory
+            let tempFile = baseURL.appendingPathComponent(".mdgitview-preview.html")
+            do {
+                try html.write(to: tempFile, atomically: true, encoding: .utf8)
+            } catch {
+                // Cannot write to the markdown directory – caller should fall back
+                return false
+            }
+
+            cleanupTempFile()
+            tempFileURL = tempFile
+            webView.loadFileURL(tempFile, allowingReadAccessTo: readAccessURL)
+            return true
+        }
+
+        // MARK: - WKNavigationDelegate
 
         func webView(
             _ webView: WKWebView,
@@ -96,6 +140,8 @@ struct MarkdownWebView: NSViewRepresentable {
             }
         }
 
+        // MARK: - Anchor scrolling
+
         func scrollToAnchor(_ anchor: String, in webView: WKWebView) {
             let escapedAnchor = anchor
                 .replacingOccurrences(of: "\\", with: "\\\\")
@@ -151,7 +197,21 @@ struct MarkdownWebView: NSViewRepresentable {
             context.coordinator.didLoadDocument = false
             context.coordinator.pendingAnchor = navigateToAnchor
             context.coordinator.lastHandledAnchor = nil
-            webView.loadHTMLString(htmlDocument, baseURL: baseURL)
+
+            // Try loadFileURL first (enables local image loading)
+            let loaded = context.coordinator.loadViaFileURL(
+                html: htmlDocument,
+                baseURL: baseURL,
+                allowedRootURL: allowedRootURL,
+                in: webView
+            )
+
+            if !loaded {
+                // Fallback: loadHTMLString (images won't show, but text renders)
+                webView.loadHTMLString(htmlDocument, baseURL: baseURL)
+                // Notify that folder access is needed
+                onRequestFolderAccess?()
+            }
             return
         }
 

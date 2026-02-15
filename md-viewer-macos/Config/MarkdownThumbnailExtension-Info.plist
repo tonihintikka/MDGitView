@@ -24,7 +24,6 @@
 		<dict>
 			<key>QLSupportedContentTypes</key>
 			<array>
-				<string>public.markdown</string>
 				<string>net.daringfireball.markdown</string>
 			</array>
 		</dict>

@@ -8,6 +8,8 @@ settings:
     SWIFT_VERSION: 5.10
     MARKETING_VERSION: 0.2.0
     CURRENT_PROJECT_VERSION: 2
+    DEVELOPMENT_TEAM: 8C2T254JY2
+    CODE_SIGN_STYLE: Automatic
 targets:
   MDGitView:
     type: application
@@ -20,7 +22,6 @@ targets:
             CFBundleTypeRole: Viewer
             LSHandlerRank: Owner
             LSItemContentTypes:
-              - public.markdown
               - net.daringfireball.markdown
             CFBundleTypeExtensions:
               - md
@@ -28,6 +29,18 @@ targets:
               - mdown
               - mkd
               - mkdn
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: net.daringfireball.markdown
+            UTTypeDescription: Markdown Document
+            UTTypeConformsTo:
+              - public.plain-text
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - md
+                - markdown
+                - mdown
+                - mkd
+                - mkdn
     entitlements:
       path: Config/MDViewer.entitlements
     sources:
@@ -42,8 +55,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         OTHER_LDFLAGS:
           - "$(inherited)"
-          - "-L$(SRCROOT)/Vendor"
-          - "-lmd_ffi"
+          - "$(SRCROOT)/Vendor/libmd_ffi.a"
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/Vendor"
@@ -72,11 +84,11 @@ targets:
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.preview
-          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).MarkdownPreviewViewController"
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).MarkdownPreviewProvider"
           NSExtensionAttributes:
             QLSupportedContentTypes:
-              - public.markdown
               - net.daringfireball.markdown
+            QLSupportsSearchableItems: true
     entitlements:
       path: Config/MarkdownPreviewExtension.entitlements
     sources:
@@ -89,8 +101,7 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         OTHER_LDFLAGS:
           - "$(inherited)"
-          - "-L$(SRCROOT)/Vendor"
-          - "-lmd_ffi"
+          - "$(SRCROOT)/Vendor/libmd_ffi.a"
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/Vendor"
@@ -106,7 +117,6 @@ targets:
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).MarkdownThumbnailProvider"
           NSExtensionAttributes:
             QLSupportedContentTypes:
-              - public.markdown
               - net.daringfireball.markdown
     entitlements:
       path: Config/MarkdownThumbnailExtension.entitlements
@@ -120,8 +130,7 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         OTHER_LDFLAGS:
           - "$(inherited)"
-          - "-L$(SRCROOT)/Vendor"
-          - "-lmd_ffi"
+          - "$(SRCROOT)/Vendor/libmd_ffi.a"
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/Vendor"

@@ -24,14 +24,15 @@
 		<dict>
 			<key>QLSupportedContentTypes</key>
 			<array>
-				<string>public.markdown</string>
 				<string>net.daringfireball.markdown</string>
 			</array>
+			<key>QLSupportsSearchableItems</key>
+			<true/>
 		</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.quicklook.preview</string>
 		<key>NSExtensionPrincipalClass</key>
-		<string>$(PRODUCT_MODULE_NAME).MarkdownPreviewViewController</string>
+		<string>$(PRODUCT_MODULE_NAME).MarkdownPreviewProvider</string>
 	</dict>
 </dict>
 </plist>
