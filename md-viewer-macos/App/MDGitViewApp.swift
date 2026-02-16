@@ -30,6 +30,8 @@ struct MDGitViewApp: App {
                         viewModel.openDocumentFromPicker(at: url)
                     }
 
+                    viewModel.checkIfDefaultMarkdownViewer()
+
                     guard CommandLine.arguments.count > 1 else { return }
                     let potentialPath = CommandLine.arguments[1]
                     let fileURL = URL(fileURLWithPath: potentialPath)

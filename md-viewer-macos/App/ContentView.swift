@@ -88,6 +88,32 @@ struct ContentView: View {
             }
             .overlay(alignment: .topLeading) {
                 VStack(alignment: .leading, spacing: 8) {
+                    if viewModel.showDefaultAppBanner {
+                        HStack(spacing: 8) {
+                            Image(systemName: "app.badge.checkmark")
+                                .foregroundStyle(.blue)
+                            Text("MDGitView is not the default app for Markdown files.")
+                                .font(.system(size: 12, weight: .semibold))
+                            Button("Set as Default") {
+                                viewModel.setAsDefaultMarkdownViewer()
+                            }
+                            .font(.system(size: 12))
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            Button {
+                                viewModel.dismissDefaultAppBanner()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                        }
+                        .padding(8)
+                        .background(.regularMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+
                     if viewModel.needsFolderAccess {
                         HStack(spacing: 8) {
                             Image(systemName: "photo.badge.exclamationmark")

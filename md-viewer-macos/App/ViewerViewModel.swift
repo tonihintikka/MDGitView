@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 final class ViewerViewModel: ObservableObject {
@@ -16,6 +17,7 @@ final class ViewerViewModel: ObservableObject {
     @Published var canGoBack = false
     @Published var canGoForward = false
     @Published var needsFolderAccess = false
+    @Published var showDefaultAppBanner = false
 
     private let renderService = MarkdownRenderService()
     private var backHistory: [URL] = []
@@ -82,6 +84,45 @@ final class ViewerViewModel: ObservableObject {
     func revealInFinder() {
         guard let url = fileURL else { return }
         NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    // MARK: - Default App Check
+
+    func checkIfDefaultMarkdownViewer() {
+        showDefaultAppBanner = !isDefaultMarkdownViewer()
+    }
+
+    func setAsDefaultMarkdownViewer() {
+        guard let markdownType = UTType("net.daringfireball.markdown") else { return }
+        let appURL = Bundle.main.bundleURL
+
+        Task {
+            do {
+                try await NSWorkspace.shared.setDefaultApplication(
+                    at: appURL,
+                    toOpen: markdownType
+                )
+                showDefaultAppBanner = false
+            } catch {
+                NSLog("Failed to set default app: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func dismissDefaultAppBanner() {
+        showDefaultAppBanner = false
+    }
+
+    private func isDefaultMarkdownViewer() -> Bool {
+        guard let bundleID = Bundle.main.bundleIdentifier,
+              let markdownType = UTType("net.daringfireball.markdown") else { return false }
+
+        guard let defaultAppURL = NSWorkspace.shared.urlForApplication(
+            toOpen: markdownType
+        ) else { return false }
+
+        let defaultBundleID = Bundle(url: defaultAppURL)?.bundleIdentifier
+        return defaultBundleID == bundleID
     }
 
     func grantFolderAccess() {
