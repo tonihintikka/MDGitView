@@ -66,6 +66,24 @@ final class ViewerViewModel: ObservableObject {
         needsFolderAccess = true
     }
 
+    func refreshDocument() {
+        guard let url = fileURL else { return }
+        reloadCurrentDocument(at: url)
+    }
+
+    func openInExternalEditor() {
+        guard let url = fileURL else { return }
+        let task = Process()
+        task.executableURL = URL(filePath: "/usr/bin/open")
+        task.arguments = ["-t", url.path]
+        try? task.run()
+    }
+
+    func revealInFinder() {
+        guard let url = fileURL else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
     func grantFolderAccess() {
         guard let directory = allowedRootURL ?? baseURL else { return }
 

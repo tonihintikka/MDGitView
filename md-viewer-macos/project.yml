@@ -87,11 +87,17 @@ targets:
           NSExtensionPointIdentifier: com.apple.quicklook.preview
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).MarkdownPreviewProvider"
           NSExtensionAttributes:
+            QLIsDataBasedPreview: true
             QLSupportedContentTypes:
               - net.daringfireball.markdown
-            QLSupportsSearchableItems: true
+            QLSupportsSearchableItems: false
     entitlements:
       path: Config/MarkdownPreviewExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.temporary-exception.files.absolute-path.read-only:
+          - /
     sources:
       - path: PreviewExtension
       - path: Shared
@@ -121,6 +127,9 @@ targets:
               - net.daringfireball.markdown
     entitlements:
       path: Config/MarkdownThumbnailExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
     sources:
       - path: ThumbnailExtension
       - path: Shared

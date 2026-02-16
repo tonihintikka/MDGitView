@@ -61,6 +61,11 @@ fi
 echo "==> Installing ${APP_NAME} to ${DEST_DIR}..."
 cp -R "${SOURCE_APP}" "${DEST_APP}"
 
+# Remove stale deriveddata extension registrations to avoid duplicates
+echo "==> Cleaning up stale plugin registrations..."
+pluginkit -r "${SOURCE_APP}/Contents/PlugIns/MarkdownPreviewExtension.appex" 2>/dev/null || true
+pluginkit -r "${SOURCE_APP}/Contents/PlugIns/MarkdownThumbnailExtension.appex" 2>/dev/null || true
+
 # Reset QuickLook extensions so macOS picks up the new version
 echo "==> Resetting QuickLook extension cache..."
 qlmanage -r 2>/dev/null || true

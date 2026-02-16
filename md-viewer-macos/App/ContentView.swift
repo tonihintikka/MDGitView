@@ -138,6 +138,39 @@ struct ContentView: View {
                 }
 
                 ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        viewModel.refreshDocument()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .help("Refresh (⌘R)")
+                    .disabled(viewModel.fileURL == nil)
+                    .keyboardShortcut("r", modifiers: [.command])
+                }
+
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        viewModel.openInExternalEditor()
+                    } label: {
+                        Image(systemName: "pencil.line")
+                    }
+                    .help("Open in External Editor (⌘E)")
+                    .disabled(viewModel.fileURL == nil)
+                    .keyboardShortcut("e", modifiers: [.command])
+                }
+
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        viewModel.revealInFinder()
+                    } label: {
+                        Image(systemName: "folder")
+                    }
+                    .help("Reveal in Finder (⇧⌘R)")
+                    .disabled(viewModel.fileURL == nil)
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
+                }
+
+                ToolbarItem(placement: .primaryAction) {
                     Button("Open…") {
                         showImporter = true
                     }

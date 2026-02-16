@@ -1,33 +1,30 @@
-import CoreGraphics
 import Foundation
 import QuickLookUI
 import UniformTypeIdentifiers
 
-final class MarkdownPreviewProvider: QLPreviewProvider, QLPreviewingController {
+final class MarkdownPreviewProvider: QLPreviewProvider {
     private let renderService = MarkdownRenderService()
 
     func providePreview(
-        for request: QLFilePreviewRequest,
-        completionHandler handler: @escaping (QLPreviewReply?, Error?) -> Void
-    ) {
-        Task {
-            do {
-                let payload = try await renderService.render(fileURL: request.fileURL)
-                let html = injectBaseURL(payload.htmlDocument, baseURL: payload.baseURL)
-                let reply = QLPreviewReply(dataOfContentType: .html, contentSize: .zero) { _ in
-                    Data(html.utf8)
-                }
-                reply.title = request.fileURL.lastPathComponent
-                handler(reply, nil)
-            } catch {
-                let fallback = fallbackHTML(for: request.fileURL.lastPathComponent, error: error)
-                let reply = QLPreviewReply(dataOfContentType: .html, contentSize: .zero) { _ in
-                    Data(fallback.utf8)
-                }
-                reply.title = request.fileURL.lastPathComponent
-                handler(reply, nil)
-            }
+        for request: QLFilePreviewRequest
+    ) async throws -> QLPreviewReply {
+        let html: String
+        do {
+            let payload = try await renderService.render(fileURL: request.fileURL)
+            html = injectBaseURL(payload.htmlDocument, baseURL: payload.baseURL)
+        } catch {
+            html = fallbackHTML(for: request.fileURL.lastPathComponent, error: error)
         }
+
+        let reply = QLPreviewReply(
+            dataOfContentType: .html,
+            contentSize: CGSize(width: 800, height: 800)
+        ) { replyToUpdate in
+            replyToUpdate.stringEncoding = .utf8
+            return Data(html.utf8)
+        }
+        reply.title = request.fileURL.lastPathComponent
+        return reply
     }
 
     private func injectBaseURL(_ html: String, baseURL: URL?) -> String {
