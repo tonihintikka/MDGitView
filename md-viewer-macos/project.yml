@@ -6,8 +6,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.10
-    MARKETING_VERSION: 0.3.1
-    CURRENT_PROJECT_VERSION: 4
+    MARKETING_VERSION: 0.4.0
+    CURRENT_PROJECT_VERSION: 5
     DEVELOPMENT_TEAM: 8C2T254JY2
     CODE_SIGN_STYLE: Automatic
 targets:
@@ -29,6 +29,7 @@ targets:
               - mdown
               - mkd
               - mkdn
+        NSHumanReadableCopyright: "Copyright 2026 Toni Hintikka. All rights reserved."
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: net.daringfireball.markdown
             UTTypeDescription: Markdown Document

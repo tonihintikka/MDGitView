@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct MDGitViewApp: App {
     @StateObject private var viewModel = ViewerViewModel()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         WindowGroup {
@@ -42,5 +43,37 @@ struct MDGitViewApp: App {
                 }
         }
         .defaultSize(width: 1200, height: 780)
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About MDGitView") {
+                    openWindow(id: "about")
+                }
+            }
+
+            CommandGroup(replacing: .help) {
+                Button("MDGitView Help") {
+                    NSWorkspace.shared.open(
+                        URL(string: "https://github.com/tonihintikka/MDGitView#readme")!
+                    )
+                }
+                Button("Report an Issue…") {
+                    NSWorkspace.shared.open(
+                        URL(string: "https://github.com/tonihintikka/MDGitView/issues")!
+                    )
+                }
+                Divider()
+                Button("Check for Updates…") {
+                    NSWorkspace.shared.open(
+                        URL(string: "https://github.com/tonihintikka/MDGitView/releases")!
+                    )
+                }
+            }
+        }
+
+        Window("About MDGitView", id: "about") {
+            AboutView()
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
     }
 }
