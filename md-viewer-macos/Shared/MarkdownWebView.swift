@@ -181,6 +181,7 @@ struct MarkdownWebView: NSViewRepresentable {
 
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.setValue(false, forKey: "drawsBackground")
+        view.allowsLinkPreview = false
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         return view

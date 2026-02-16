@@ -121,6 +121,13 @@ fn enforce_resource_policy(
         .replace_all(html, |caps: &regex::Captures<'_>| {
             let url = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
             if is_allowed_resource(url, base_dir, allowed_root_dir) {
+                if url.starts_with("http://") || url.starts_with("https://") {
+                    diagnostics.push(Diagnostic {
+                        code: "external_link".to_string(),
+                        message: "Link to external source".to_string(),
+                        resource: Some(url.to_string()),
+                    });
+                }
                 caps.get(0).map(|m| m.as_str()).unwrap_or_default().to_string()
             } else {
                 diagnostics.push(Diagnostic {
@@ -141,6 +148,13 @@ fn enforce_resource_policy(
         .replace_all(&with_links, |caps: &regex::Captures<'_>| {
             let url = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
             if is_allowed_resource(url, base_dir, allowed_root_dir) {
+                if url.starts_with("http://") || url.starts_with("https://") {
+                    diagnostics.push(Diagnostic {
+                        code: "external_image".to_string(),
+                        message: "Image loaded from external source".to_string(),
+                        resource: Some(url.to_string()),
+                    });
+                }
                 caps.get(0).map(|m| m.as_str()).unwrap_or_default().to_string()
             } else {
                 diagnostics.push(Diagnostic {

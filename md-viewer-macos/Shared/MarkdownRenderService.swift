@@ -71,6 +71,7 @@ final class MarkdownRenderService {
         enableMermaid: Bool,
         enableMath: Bool
     ) -> String {
+        let nonce = UUID().uuidString
         let css = loadResource(named: "github-markdown", ext: "css")
         let mermaidJS = loadResource(named: "mermaid.min", ext: "js")
         let mathJaxJS = loadResource(named: "mathjax", ext: "js")
@@ -82,7 +83,7 @@ final class MarkdownRenderService {
         <head>
           <meta charset=\"utf-8\">
           <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-          <meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: file:; style-src 'unsafe-inline'; script-src 'unsafe-inline';\">
+          <meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: file:; style-src 'unsafe-inline'; script-src 'nonce-\(nonce)';\">
           <style>
           \(css)
           </style>
@@ -91,13 +92,13 @@ final class MarkdownRenderService {
           <article>
           \(content)
           </article>
-          <script>
+          <script nonce=\"\(nonce)\">
           \(mermaidJS)
           </script>
-          <script>
+          <script nonce=\"\(nonce)\">
           \(mathJaxJS)
           </script>
-          <script>
+          <script nonce=\"\(nonce)\">
           \(shellJS)
           </script>
         </body>
