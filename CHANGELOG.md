@@ -2,7 +2,7 @@
 
 All notable changes to MDGitView are documented here.
 
-## [Unreleased]
+## [0.5.1] - 2026-02-19
 
 ### Fixed
 - Mermaid diagrams now display fully without clipping in the default view
