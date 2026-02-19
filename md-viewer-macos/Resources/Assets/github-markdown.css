@@ -13,6 +13,7 @@
   --mermaid-control-bg-hover: rgba(31, 35, 40, 0.98);
   --mermaid-control-border: rgba(255, 255, 255, 0.22);
   --mermaid-control-fg: #f8fafc;
+  --mermaid-control-active-bg: rgba(9, 105, 218, 0.95);
 }
 
 html,
@@ -158,10 +159,14 @@ body {
   overflow: hidden;
   border-radius: 6px;
   touch-action: none;
+  cursor: default;
+}
+
+.markdown-body .mermaid.mermaid-interactive.mermaid-tools-enabled .mermaid-viewport {
   cursor: grab;
 }
 
-.markdown-body .mermaid.mermaid-interactive .mermaid-viewport.is-dragging {
+.markdown-body .mermaid.mermaid-interactive.mermaid-tools-enabled .mermaid-viewport.is-dragging {
   cursor: grabbing;
 }
 
@@ -179,9 +184,24 @@ body {
   right: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   z-index: 4;
   user-select: none;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-launcher {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-panel {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-layer.is-expanded .mermaid-control-panel {
+  display: flex;
 }
 
 .markdown-body .mermaid.mermaid-interactive .mermaid-control-top {
@@ -229,6 +249,19 @@ body {
   min-width: 58px;
 }
 
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-wheel {
+  min-width: 64px;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-tools-toggle {
+  min-width: 68px;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-button.is-active {
+  background: var(--mermaid-control-active-bg);
+  border-color: transparent;
+}
+
 .markdown-body .mermaid.mermaid-interactive .mermaid-control-up {
   grid-area: up;
 }
@@ -268,5 +301,6 @@ body {
     --mermaid-control-bg-hover: rgba(17, 24, 39, 0.98);
     --mermaid-control-border: rgba(148, 163, 184, 0.3);
     --mermaid-control-fg: #f1f5f9;
+    --mermaid-control-active-bg: rgba(37, 99, 235, 0.96);
   }
 }

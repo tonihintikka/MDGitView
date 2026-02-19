@@ -11,24 +11,44 @@
     return Math.min(max, Math.max(min, value));
   }
 
-  function getDiagramSize(svg) {
+  function getDiagramBounds(svg) {
     if (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width > 0 && svg.viewBox.baseVal.height > 0) {
       return {
+        x: svg.viewBox.baseVal.x || 0,
+        y: svg.viewBox.baseVal.y || 0,
         width: svg.viewBox.baseVal.width,
         height: svg.viewBox.baseVal.height
       };
     }
 
+    var viewBoxAttr = svg.getAttribute('viewBox');
+    if (viewBoxAttr) {
+      var parts = viewBoxAttr.trim().split(/\s+/).map(function (part) { return parseFloat(part); });
+      if (parts.length === 4 && isFinite(parts[2]) && isFinite(parts[3]) && parts[2] > 0 && parts[3] > 0) {
+        return {
+          x: isFinite(parts[0]) ? parts[0] : 0,
+          y: isFinite(parts[1]) ? parts[1] : 0,
+          width: parts[2],
+          height: parts[3]
+        };
+      }
+    }
+
     var widthAttr = parseFloat(svg.getAttribute('width') || '');
     var heightAttr = parseFloat(svg.getAttribute('height') || '');
     if (widthAttr > 0 && heightAttr > 0) {
-      return { width: widthAttr, height: heightAttr };
+      return { x: 0, y: 0, width: widthAttr, height: heightAttr };
     }
 
     try {
       var bbox = svg.getBBox();
       if (bbox.width > 0 && bbox.height > 0) {
-        return { width: bbox.width, height: bbox.height };
+        return {
+          x: bbox.x || 0,
+          y: bbox.y || 0,
+          width: bbox.width,
+          height: bbox.height
+        };
       }
     } catch (_error) {
       // Ignore browsers that disallow getBBox for hidden content.
@@ -36,6 +56,8 @@
 
     var rect = svg.getBoundingClientRect();
     return {
+      x: 0,
+      y: 0,
       width: rect.width || 1,
       height: rect.height || 1
     };
@@ -43,8 +65,7 @@
 
   function preferredViewportHeight(diagramHeight) {
     var minHeight = 220;
-    var maxHeight = Math.max(minHeight, Math.floor((window.innerHeight || 900) * 0.72));
-    return clamp(Math.ceil(diagramHeight + 24), minHeight, maxHeight);
+    return Math.max(minHeight, Math.ceil(diagramHeight + 24));
   }
 
   function createControlButton(label, action, title, extraClass) {
@@ -80,11 +101,17 @@
 
       var controlLayer = document.createElement('div');
       controlLayer.className = 'mermaid-control-layer';
+      var launcherRow = document.createElement('div');
+      launcherRow.className = 'mermaid-control-launcher';
+      var toolsToggleButton = createControlButton('Tools', 'toggleTools', 'Show tools', 'mermaid-control-tools-toggle');
+      launcherRow.appendChild(toolsToggleButton);
 
       var topRow = document.createElement('div');
       topRow.className = 'mermaid-control-top';
       topRow.appendChild(createControlButton('Fit', 'fit', 'Fit to viewport', 'mermaid-control-fit'));
       topRow.appendChild(createControlButton('Reset', 'reset', 'Reset view', 'mermaid-control-reset'));
+      var wheelToggleButton = createControlButton('Wheel', 'toggleWheel', 'Enable wheel zoom', 'mermaid-control-wheel');
+      topRow.appendChild(wheelToggleButton);
 
       var pad = document.createElement('div');
       pad.className = 'mermaid-control-pad';
@@ -95,12 +122,17 @@
       pad.appendChild(createControlButton('+', 'zoomIn', 'Zoom in', 'mermaid-control-zoom-in'));
       pad.appendChild(createControlButton('-', 'zoomOut', 'Zoom out', 'mermaid-control-zoom-out'));
 
-      controlLayer.appendChild(topRow);
-      controlLayer.appendChild(pad);
+      var panel = document.createElement('div');
+      panel.className = 'mermaid-control-panel';
+      panel.appendChild(topRow);
+      panel.appendChild(pad);
+
+      controlLayer.appendChild(launcherRow);
+      controlLayer.appendChild(panel);
       diagram.appendChild(controlLayer);
 
-      var diagramSize = getDiagramSize(svg);
-      viewport.style.height = preferredViewportHeight(diagramSize.height) + 'px';
+      var diagramBounds = getDiagramBounds(svg);
+      viewport.style.height = preferredViewportHeight(diagramBounds.height) + 'px';
 
       var state = {
         scale: 1,
@@ -108,9 +140,53 @@
         ty: 0,
         minScale: 0.2,
         maxScale: 6,
-        panStep: 80
+        panStep: 80,
+        wheelZoomEnabled: false,
+        toolsEnabled: false
       };
       var viewMode = 'fit';
+      var fitPadding = 18;
+      var isDragging = false;
+      var lastX = 0;
+      var lastY = 0;
+
+      function refreshDiagramBounds() {
+        diagramBounds = getDiagramBounds(svg);
+      }
+
+      function stopDragging(pointerId) {
+        if (!isDragging) {
+          return;
+        }
+
+        isDragging = false;
+        viewport.classList.remove('is-dragging');
+        if (typeof pointerId === 'number' && viewport.hasPointerCapture(pointerId)) {
+          viewport.releasePointerCapture(pointerId);
+        }
+      }
+
+      function updateWheelToggleUI() {
+        wheelToggleButton.classList.toggle('is-active', state.wheelZoomEnabled);
+        var title = state.wheelZoomEnabled ? 'Disable wheel zoom' : 'Enable wheel zoom';
+        wheelToggleButton.title = title;
+        wheelToggleButton.setAttribute('aria-label', title);
+      }
+
+      function updateToolsUI() {
+        controlLayer.classList.toggle('is-expanded', state.toolsEnabled);
+        diagram.classList.toggle('mermaid-tools-enabled', state.toolsEnabled);
+        toolsToggleButton.classList.toggle('is-active', state.toolsEnabled);
+        var title = state.toolsEnabled ? 'Hide tools' : 'Show tools';
+        toolsToggleButton.title = title;
+        toolsToggleButton.setAttribute('aria-label', title);
+
+        if (!state.toolsEnabled) {
+          state.wheelZoomEnabled = false;
+          updateWheelToggleUI();
+          stopDragging();
+        }
+      }
 
       function applyTransform() {
         svg.style.transform = 'translate(' + state.tx + 'px, ' + state.ty + 'px) scale(' + state.scale + ')';
@@ -119,8 +195,8 @@
       function centerAtScale(scale) {
         var bounds = viewport.getBoundingClientRect();
         state.scale = clamp(scale, state.minScale, state.maxScale);
-        state.tx = (bounds.width - diagramSize.width * state.scale) / 2;
-        state.ty = (bounds.height - diagramSize.height * state.scale) / 2;
+        state.tx = (bounds.width - diagramBounds.width * state.scale) / 2 - diagramBounds.x * state.scale;
+        state.ty = (bounds.height - diagramBounds.height * state.scale) / 2 - diagramBounds.y * state.scale;
         applyTransform();
       }
 
@@ -130,7 +206,10 @@
           return;
         }
 
-        var scale = Math.min(bounds.width / diagramSize.width, bounds.height / diagramSize.height);
+        refreshDiagramBounds();
+        var usableWidth = Math.max(1, bounds.width - fitPadding * 2);
+        var usableHeight = Math.max(1, bounds.height - fitPadding * 2);
+        var scale = Math.min(usableWidth / diagramBounds.width, usableHeight / diagramBounds.height);
         if (!isFinite(scale) || scale <= 0) {
           scale = 1;
         }
@@ -140,11 +219,7 @@
       }
 
       function resetView() {
-        viewMode = 'reset';
-        state.scale = 1;
-        state.tx = 0;
-        state.ty = 0;
-        applyTransform();
+        fitToViewport();
       }
 
       function panBy(dx, dy) {
@@ -178,7 +253,15 @@
           return;
         }
 
+        if (!state.toolsEnabled && target.dataset.action !== 'toggleTools') {
+          return;
+        }
+
         switch (target.dataset.action) {
+          case 'toggleTools':
+            state.toolsEnabled = !state.toolsEnabled;
+            updateToolsUI();
+            break;
           case 'fit':
             fitToViewport();
             break;
@@ -203,12 +286,19 @@
           case 'reset':
             resetView();
             break;
+          case 'toggleWheel':
+            state.wheelZoomEnabled = !state.wheelZoomEnabled;
+            updateWheelToggleUI();
+            break;
           default:
             break;
         }
       });
 
       viewport.addEventListener('wheel', function (event) {
+        if (!state.toolsEnabled || !state.wheelZoomEnabled) {
+          return;
+        }
         event.preventDefault();
         var bounds = viewport.getBoundingClientRect();
         var cursorX = event.clientX - bounds.left;
@@ -216,12 +306,8 @@
         zoomAt(event.deltaY < 0 ? 1.1 : 0.9, cursorX, cursorY);
       }, { passive: false });
 
-      var isDragging = false;
-      var lastX = 0;
-      var lastY = 0;
-
       viewport.addEventListener('pointerdown', function (event) {
-        if (event.button !== 0) {
+        if (!state.toolsEnabled || event.button !== 0) {
           return;
         }
 
@@ -245,22 +331,15 @@
       });
 
       function endDragging(event) {
-        if (!isDragging) {
-          return;
-        }
-
-        isDragging = false;
-        viewport.classList.remove('is-dragging');
-        if (viewport.hasPointerCapture(event.pointerId)) {
-          viewport.releasePointerCapture(event.pointerId);
-        }
+        stopDragging(event.pointerId);
       }
 
       viewport.addEventListener('pointerup', endDragging);
       viewport.addEventListener('pointercancel', endDragging);
 
       window.addEventListener('resize', function () {
-        viewport.style.height = preferredViewportHeight(diagramSize.height) + 'px';
+        refreshDiagramBounds();
+        viewport.style.height = preferredViewportHeight(diagramBounds.height) + 'px';
         if (viewMode === 'fit') {
           fitToViewport();
           return;
@@ -268,6 +347,8 @@
         applyTransform();
       });
 
+      updateWheelToggleUI();
+      updateToolsUI();
       fitToViewport();
     });
   }
