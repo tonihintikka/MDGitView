@@ -149,17 +149,25 @@ body {
 .markdown-body .mermaid.mermaid-interactive {
   position: relative;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   text-align: initial;
 }
 
 .markdown-body .mermaid.mermaid-interactive .mermaid-viewport {
   position: relative;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 6px;
   touch-action: none;
   cursor: default;
+}
+
+.markdown-body .mermaid.mermaid-interactive.mermaid-tools-enabled {
+  overflow: hidden;
+}
+
+.markdown-body .mermaid.mermaid-interactive.mermaid-tools-enabled .mermaid-viewport {
+  overflow: hidden;
 }
 
 .markdown-body .mermaid.mermaid-interactive.mermaid-tools-enabled .mermaid-viewport {
@@ -172,8 +180,6 @@ body {
 
 .markdown-body .mermaid.mermaid-interactive svg {
   display: block;
-  max-width: none !important;
-  height: auto;
   transform-origin: 0 0;
   will-change: transform;
 }

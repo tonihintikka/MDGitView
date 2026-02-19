@@ -65,7 +65,8 @@
 
   function preferredViewportHeight(diagramHeight) {
     var minHeight = 220;
-    return Math.max(minHeight, Math.ceil(diagramHeight + 24));
+    var maxHeight = 500;
+    return Math.min(maxHeight, Math.max(minHeight, Math.ceil(diagramHeight + 24)));
   }
 
   function createControlButton(label, action, title, extraClass) {
@@ -132,7 +133,10 @@
       diagram.appendChild(controlLayer);
 
       var diagramBounds = getDiagramBounds(svg);
-      viewport.style.height = preferredViewportHeight(diagramBounds.height) + 'px';
+      // Save mermaid's original style (e.g. "max-width: 800px;") to restore when tools close.
+      var svgOriginalStyle = svg.getAttribute('style') || '';
+      var svgOriginalWidth = svg.getAttribute('width') || '';
+      var svgOriginalHeight = svg.getAttribute('height') || '';
 
       var state = {
         scale: 1,
@@ -181,7 +185,30 @@
         toolsToggleButton.title = title;
         toolsToggleButton.setAttribute('aria-label', title);
 
-        if (!state.toolsEnabled) {
+        if (state.toolsEnabled) {
+          // Activate viewport mode: replace mermaid's responsive style with fixed pixel size
+          refreshDiagramBounds();
+          svg.removeAttribute('style');
+          svg.setAttribute('width', diagramBounds.width + 'px');
+          svg.setAttribute('height', diagramBounds.height + 'px');
+          viewport.style.height = preferredViewportHeight(diagramBounds.height) + 'px';
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              fitToViewport();
+            });
+          });
+        } else {
+          // Deactivate: restore mermaid's original attributes, remove transform
+          svg.setAttribute('style', svgOriginalStyle);
+          svg.setAttribute('width', svgOriginalWidth);
+          svg.setAttribute('height', svgOriginalHeight);
+          if (!svgOriginalStyle) { svg.removeAttribute('style'); }
+          if (!svgOriginalWidth) { svg.removeAttribute('width'); }
+          if (!svgOriginalHeight) { svg.removeAttribute('height'); }
+          viewport.style.height = '';
+          svg.style.transform = '';
+          state.scale = 1; state.tx = 0; state.ty = 0;
+          viewMode = 'fit';
           state.wheelZoomEnabled = false;
           updateWheelToggleUI();
           stopDragging();
@@ -349,7 +376,6 @@
 
       updateWheelToggleUI();
       updateToolsUI();
-      fitToViewport();
     });
   }
 

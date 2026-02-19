@@ -19,7 +19,7 @@ Browse markdown files in your projects like you would on GitHub — with Mermaid
 ## Features
 
 - **GitHub-style rendering** — tables, task lists, autolinks, fenced code blocks
-- **Mermaid diagrams** — rendered directly in the viewer
+- **Mermaid diagrams** — rendered directly in the viewer with interactive zoom and pan (click **Tools** on any diagram)
 - **MathJax** — mathematical notation support
 - **Table of Contents** — auto-generated sidebar from headings
 - **Dark mode** — adapts to your system appearance
@@ -70,6 +70,10 @@ If Quick Look doesn't show the rendered preview:
 ### Setting as default Markdown viewer
 
 Right-click any `.md` file in Finder > Get Info > Open With > select MDGitView > click "Change All".
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Building from source
 
