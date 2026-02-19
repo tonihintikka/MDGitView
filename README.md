@@ -75,6 +75,18 @@ Right-click any `.md` file in Finder > Get Info > Open With > select MDGitView >
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, project layout, and contributing guidelines.
 
+## Open source credits (Mermaid)
+
+Mermaid diagram rendering in MDGitView is powered by the vendored Mermaid runtime in `md-viewer-macos/Resources/Assets/mermaid.min.js`.
+
+- [Mermaid](https://github.com/mermaid-js/mermaid) (v11.12.2) - MIT
+- [DOMPurify](https://github.com/cure53/DOMPurify) (bundled via Mermaid) - Apache-2.0 / MPL-2.0
+- [js-yaml](https://github.com/nodeca/js-yaml) (bundled via Mermaid) - MIT
+- [lodash-es](https://github.com/lodash/lodash) (bundled via Mermaid) - MIT
+- [cytoscape.js](https://github.com/cytoscape/cytoscape.js) (bundled via Mermaid) - MIT
+
+Version and bundled license details were verified from `md-viewer-macos/Resources/Assets/mermaid.min.js`.
+
 ## License
 
 MIT
