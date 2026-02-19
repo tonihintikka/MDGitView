@@ -9,6 +9,10 @@
   --accent: #0969da;
   --table-head-bg: #f6f8fa;
   --mermaid-bg: #fafbfc;
+  --mermaid-control-bg: rgba(31, 35, 40, 0.88);
+  --mermaid-control-bg-hover: rgba(31, 35, 40, 0.98);
+  --mermaid-control-border: rgba(255, 255, 255, 0.22);
+  --mermaid-control-fg: #f8fafc;
 }
 
 html,
@@ -141,6 +145,114 @@ body {
   text-align: center;
 }
 
+.markdown-body .mermaid.mermaid-interactive {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  text-align: initial;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-viewport.is-dragging {
+  cursor: grabbing;
+}
+
+.markdown-body .mermaid.mermaid-interactive svg {
+  display: block;
+  max-width: none !important;
+  height: auto;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-layer {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 4;
+  user-select: none;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-top {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-pad {
+  display: grid;
+  grid-template-columns: 36px 36px 36px;
+  grid-template-areas:
+    ". up zoomin"
+    "left . right"
+    ". down zoomout";
+  gap: 6px;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-button {
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--mermaid-control-border);
+  background: var(--mermaid-control-bg);
+  color: var(--mermaid-control-fg);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-button:hover {
+  background: var(--mermaid-control-bg-hover);
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-button:active {
+  transform: translateY(1px);
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-fit {
+  min-width: 58px;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-reset {
+  min-width: 58px;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-up {
+  grid-area: up;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-left {
+  grid-area: left;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-right {
+  grid-area: right;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-down {
+  grid-area: down;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-zoom-in {
+  grid-area: zoomin;
+}
+
+.markdown-body .mermaid.mermaid-interactive .mermaid-control-zoom-out {
+  grid-area: zoomout;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --fg: #e6edf3;
@@ -152,5 +264,9 @@ body {
     --accent: #58a6ff;
     --table-head-bg: #161b22;
     --mermaid-bg: #11161c;
+    --mermaid-control-bg: rgba(17, 24, 39, 0.9);
+    --mermaid-control-bg-hover: rgba(17, 24, 39, 0.98);
+    --mermaid-control-border: rgba(148, 163, 184, 0.3);
+    --mermaid-control-fg: #f1f5f9;
   }
 }
