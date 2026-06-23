@@ -79,17 +79,25 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, project layout, and contributing guidelines.
 
+When updating dependencies, review **Rust crates**, **vendored third-party JS** (Mermaid, MathJax), and the **Xcode SDK** — see [Dependency updates](DEVELOPMENT.md#dependency-updates).
+
 ## Open source credits (Mermaid)
 
 Mermaid diagram rendering in MDGitView is powered by the vendored Mermaid runtime in `md-viewer-macos/Resources/Assets/mermaid.min.js`.
 
-- [Mermaid](https://github.com/mermaid-js/mermaid) (v11.12.2) - MIT
+- [Mermaid](https://github.com/mermaid-js/mermaid) (v11.15.0) - MIT
 - [DOMPurify](https://github.com/cure53/DOMPurify) (bundled via Mermaid) - Apache-2.0 / MPL-2.0
 - [js-yaml](https://github.com/nodeca/js-yaml) (bundled via Mermaid) - MIT
 - [lodash-es](https://github.com/lodash/lodash) (bundled via Mermaid) - MIT
 - [cytoscape.js](https://github.com/cytoscape/cytoscape.js) (bundled via Mermaid) - MIT
 
-Version and bundled license details were verified from `md-viewer-macos/Resources/Assets/mermaid.min.js`.
+Version and bundled license details were verified from `md-viewer-macos/Resources/Assets/mermaid.min.js` and `md-viewer-macos/Resources/ThirdParty/versions.json`.
+
+## Open source credits (MathJax)
+
+Mathematical notation is rendered with the vendored MathJax runtime in `md-viewer-macos/Resources/Assets/mathjax.js`.
+
+- [MathJax](https://github.com/mathjax/MathJax) (v4.1.2) - Apache-2.0
 
 ## License
 

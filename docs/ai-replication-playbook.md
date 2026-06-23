@@ -168,8 +168,8 @@ Add assets:
 
 - `Resources/Assets/github-markdown.css`
 - `Resources/Assets/viewer-shell.js`
-- `Resources/Assets/mermaid.min.js` (bootstrap stub)
-- `Resources/Assets/mathjax.js` (bootstrap stub)
+- `Resources/Assets/mermaid.min.js` (vendored Mermaid)
+- `Resources/Assets/mathjax.js` (vendored MathJax)
 
 Requirements:
 

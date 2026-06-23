@@ -23,8 +23,12 @@ The generated project contains targets:
 
 ## Resource notes
 
-`Resources/Assets/` currently contains bootstrap CSS/JS and local runtime stubs.
-Replace stubs with vendored Mermaid/MathJax distributions for production parity.
+`Resources/Assets/` contains offline viewer assets:
+
+- `github-markdown.css`, `viewer-shell.js` — project-owned styling and shell logic
+- `mermaid.min.js`, `mathjax.js` — vendored third-party runtimes (see `Resources/ThirdParty/versions.json`)
+
+Refresh Mermaid/MathJax with `../scripts/update_third_party.sh`. When updating project dependencies, review all three layers (Rust, vendored JS, Xcode SDK) — see [DEVELOPMENT.md](../DEVELOPMENT.md#dependency-updates).
 
 ## Test Quick Look (Space / thumbnails)
 

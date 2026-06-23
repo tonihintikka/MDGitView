@@ -243,14 +243,13 @@ Current implementation includes:
 Assets:
 
 - `Resources/Assets/viewer-shell.js`
-- `Resources/Assets/mermaid.min.js` (stub)
-- `Resources/Assets/mathjax.js` (stub)
+- `Resources/Assets/mermaid.min.js` (vendored Mermaid; see `ThirdParty/versions.json`)
+- `Resources/Assets/mathjax.js` (vendored MathJax config + `tex-chtml.js`)
 
 Behavior:
 
 - JS shell reads `data-enable-mermaid` and `data-enable-math` flags from `<body>`.
-- Calls Mermaid and MathJax runtimes if present.
-- Current Mermaid/MathJax files are bootstrap stubs and must be replaced with real vendored runtime files for production parity.
+- Calls Mermaid and MathJax runtimes if present (vendored under `Resources/Assets/`; refresh via `./scripts/update_third_party.sh`).
 
 ## 8. Security model
 
@@ -327,7 +326,7 @@ Manual acceptance checklist:
 
 ## 11. Known gaps and implementation notes
 
-- Mermaid and MathJax are currently stubs; replace with official offline bundles.
+- Mermaid and MathJax are vendored offline; maintain with `./scripts/update_third_party.sh`.
 - Full GitHub syntax highlighting is not yet implemented.
 - Quick Look activation depends on correct Info.plist extension metadata.
 - Current TOC heading parser is line-based and does not parse headings hidden in fenced code blocks; replicate as-is unless intentionally improving behavior.

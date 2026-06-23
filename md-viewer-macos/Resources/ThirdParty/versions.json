@@ -1,0 +1,19 @@
+{
+  "updated": "2026-06-23",
+  "assets": {
+    "mermaid.min.js": {
+      "package": "mermaid",
+      "version": "11.15.0",
+      "license": "MIT",
+      "source": "https://www.npmjs.com/package/mermaid",
+      "notes": "Bundled dist/mermaid.min.js; includes DOMPurify and other transitive deps."
+    },
+    "mathjax.js": {
+      "package": "mathjax",
+      "version": "4.1.2",
+      "license": "Apache-2.0",
+      "source": "https://www.npmjs.com/package/mathjax",
+      "notes": "Local config preamble + tex-chtml.js (TeX input, CHTML output, fonts included)."
+    }
+  }
+}

@@ -12,6 +12,11 @@
 ## Remaining for full production parity
 
 - Install missing toolchains and run full build/test loop (`cargo`, full Xcode, xcodegen).
-- Replace Mermaid/MathJax stub scripts with official vendored offline distributions.
 - Add syntax highlighting runtime/theme parity with GitHub (e.g. Prism/Highlight.js assets vendored offline).
 - Validate extension registration and behavior in a signed app build on target macOS versions.
+
+## Vendored third-party runtimes (maintained)
+
+- Mermaid and MathJax are vendored offline under `md-viewer-macos/Resources/Assets/`.
+- Pinned versions: `md-viewer-macos/Resources/ThirdParty/versions.json`.
+- Refresh with `./scripts/update_third_party.sh` whenever Rust deps or security advisories are reviewed — see [DEVELOPMENT.md](../DEVELOPMENT.md#dependency-updates).

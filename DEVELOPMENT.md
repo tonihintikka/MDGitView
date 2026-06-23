@@ -125,6 +125,30 @@ log stream --predicate 'subsystem == "com.apple.quicklook"' --level debug
 ./scripts/notarize.sh
 ```
 
+## Dependency updates
+
+When refreshing dependencies, check **all three layers** — they use different tooling and are not updated together automatically.
+
+| Layer | What | How to check / update |
+|-------|------|------------------------|
+| **Rust** | `md-engine`, `md-ffi` crates | `cargo update`, `cargo audit`, `cargo test` |
+| **Third-party JS** | `mermaid.min.js`, `mathjax.js` | `./scripts/update_third_party.sh` — see [`ThirdParty/README.md`](md-viewer-macos/Resources/ThirdParty/README.md) and [`versions.json`](md-viewer-macos/Resources/ThirdParty/versions.json) |
+| **Apple SDK** | AppKit, WebKit, Quick Look | Follows installed Xcode / macOS SDK at build time |
+
+Recommended maintenance loop:
+
+```bash
+cargo update && cargo audit && cargo test
+./scripts/update_third_party.sh   # review Mermaid security advisories before bumping
+./scripts/install.sh              # rebuild and smoke-test viewer + Quick Look
+```
+
+After updating third-party JS, verify:
+
+- Mermaid diagram renders and **Tools** controls still work
+- Inline math (`$E=mc^2$`) and display math (`$$...$$`) typeset correctly
+- Quick Look preview still loads (extensions bundle the same assets)
+
 ## Key files reference
 
 | File | Purpose |
@@ -135,7 +159,9 @@ log stream --predicate 'subsystem == "com.apple.quicklook"' --level debug
 | `md-viewer-macos/Shared/RenderModels.swift` | Data models (RenderOptions, RenderedPayload) |
 | `md-viewer-macos/PreviewExtension/MarkdownPreviewViewController.swift` | Quick Look preview controller |
 | `md-viewer-macos/Resources/Assets/github-markdown.css` | GitHub-style CSS |
-| `md-viewer-macos/Resources/Assets/mermaid.min.js` | Mermaid diagram renderer |
+| `md-viewer-macos/Resources/Assets/mermaid.min.js` | Mermaid diagram renderer (vendored; see `ThirdParty/versions.json`) |
+| `md-viewer-macos/Resources/Assets/mathjax.js` | MathJax TeX/CHTML runtime (vendored) |
+| `scripts/update_third_party.sh` | Re-download Mermaid and MathJax into `Resources/Assets/` |
 | `md-engine/src/lib.rs` | Rust rendering engine |
 | `md-ffi/src/lib.rs` | Rust FFI exports |
 

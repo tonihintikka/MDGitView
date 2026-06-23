@@ -438,9 +438,29 @@
 
   renderMermaid();
 
-  if (enableMath && window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-    window.MathJax.typesetPromise().catch(function () {
-      // Keep raw math text visible as fallback.
-    });
+  function renderMath() {
+    if (!enableMath || !window.MathJax) {
+      return;
+    }
+
+    function typeset() {
+      if (typeof window.MathJax.typesetPromise !== 'function') {
+        return;
+      }
+      window.MathJax.typesetPromise().catch(function () {
+        // Keep raw math text visible as fallback.
+      });
+    }
+
+    if (window.MathJax.startup && window.MathJax.startup.promise) {
+      window.MathJax.startup.promise.then(typeset).catch(function () {
+        // Keep raw math text visible as fallback.
+      });
+      return;
+    }
+
+    typeset();
   }
+
+  renderMath();
 })();

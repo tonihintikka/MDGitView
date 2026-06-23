@@ -21,4 +21,5 @@
 ## No network dependency
 
 - Viewer rendering does not require remote JS/CSS loads.
-- Mermaid/Math runtimes are expected to be vendored and signed inside app resources.
+- Mermaid and MathJax runtimes are vendored and signed inside app resources.
+- When updating dependencies, refresh vendored JS with `./scripts/update_third_party.sh` and review [Mermaid security advisories](https://github.com/mermaid-js/mermaid/security). See `md-viewer-macos/Resources/ThirdParty/versions.json`.
