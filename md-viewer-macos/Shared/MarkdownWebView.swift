@@ -20,6 +20,8 @@ struct MarkdownWebView: NSViewRepresentable {
         var pendingAnchor: String?
         var lastHandledAnchor: String?
         private var tempFileURL: URL?
+        private var isUsingFileURLLoad = false
+        private var didFallbackToHTMLString = false
 
         init(parent: MarkdownWebView) {
             self.parent = parent
@@ -49,19 +51,27 @@ struct MarkdownWebView: NSViewRepresentable {
             // allowedRootURL (git repo root) covers images referenced via ../
             let readAccessURL = allowedRootURL ?? baseURL
 
-            // Write HTML to a hidden temp file inside the baseURL directory
-            let tempFile = baseURL.appendingPathComponent(".mdgitview-preview.html")
             do {
-                try html.write(to: tempFile, atomically: true, encoding: .utf8)
+                let tempFile = try prepareTempFile(html: html, in: baseURL)
+                isUsingFileURLLoad = true
+                didFallbackToHTMLString = false
+                webView.loadFileURL(tempFile, allowingReadAccessTo: readAccessURL)
+                return true
             } catch {
                 // Cannot write to the markdown directory – caller should fall back
+                isUsingFileURLLoad = false
+                didFallbackToHTMLString = false
                 return false
             }
+        }
 
+        func prepareTempFile(html: String, in baseURL: URL) throws -> URL {
             cleanupTempFile()
+
+            let tempFile = baseURL.appendingPathComponent(".mdgitview-preview.html")
+            try html.write(to: tempFile, atomically: true, encoding: .utf8)
             tempFileURL = tempFile
-            webView.loadFileURL(tempFile, allowingReadAccessTo: readAccessURL)
-            return true
+            return tempFile
         }
 
         // MARK: - WKNavigationDelegate
@@ -134,10 +144,28 @@ struct MarkdownWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             didLoadDocument = true
+            isUsingFileURLLoad = false
             if let anchor = pendingAnchor {
                 scrollToAnchor(anchor, in: webView)
                 pendingAnchor = nil
             }
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            fallbackToHTMLStringIfNeeded(in: webView, error: error)
+        }
+
+        func fallbackToHTMLStringIfNeeded(in webView: WKWebView, error: Error) {
+            guard isUsingFileURLLoad, !didFallbackToHTMLString else { return }
+            guard (error as NSError).code != NSURLErrorCancelled else { return }
+            didFallbackToHTMLString = true
+            isUsingFileURLLoad = false
+            webView.loadHTMLString(parent.htmlDocument, baseURL: parent.baseURL)
+            parent.onRequestFolderAccess?()
         }
 
         // MARK: - Anchor scrolling

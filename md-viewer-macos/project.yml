@@ -145,3 +145,15 @@ targets:
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/Vendor"
+
+  MDGitViewTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: MDGitView
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.toni.mdgitview.tests
+        GENERATE_INFOPLIST_FILE: YES
