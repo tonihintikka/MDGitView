@@ -17,61 +17,23 @@ struct MarkdownWebView: NSViewRepresentable {
         var didLoadDocument = false
         var lastLoadedHTML = ""
         var lastLoadedBaseURL: URL?
+        var lastLoadedAllowedRootURL: URL?
+        var lastLoadedFileURL: URL?
         var pendingAnchor: String?
         var lastHandledAnchor: String?
-        private var tempFileURL: URL?
-        private var isUsingFileURLLoad = false
-        private var didFallbackToHTMLString = false
+        let resourceHandler = MarkdownResourceSchemeHandler()
+        private var activeDocumentID: String?
 
         init(parent: MarkdownWebView) {
             self.parent = parent
+            super.init()
+            resourceHandler.onAccessDenied = { [weak self] in
+                self?.parent.onRequestFolderAccess?()
+            }
         }
 
         deinit {
-            cleanupTempFile()
-        }
-
-        // MARK: - Temp file management
-
-        func cleanupTempFile() {
-            if let url = tempFileURL {
-                try? FileManager.default.removeItem(at: url)
-                tempFileURL = nil
-            }
-        }
-
-        /// Write HTML to a temp file and load via loadFileURL for local image access.
-        /// Returns true if successful, false if fallback is needed.
-        func loadViaFileURL(html: String, baseURL: URL?, allowedRootURL: URL?, in webView: WKWebView) -> Bool {
-            guard let baseURL = baseURL else {
-                return false
-            }
-
-            // Determine the broadest directory the WebView may read from.
-            // allowedRootURL (git repo root) covers images referenced via ../
-            let readAccessURL = allowedRootURL ?? baseURL
-
-            do {
-                let tempFile = try prepareTempFile(html: html, in: baseURL)
-                isUsingFileURLLoad = true
-                didFallbackToHTMLString = false
-                webView.loadFileURL(tempFile, allowingReadAccessTo: readAccessURL)
-                return true
-            } catch {
-                // Cannot write to the markdown directory – caller should fall back
-                isUsingFileURLLoad = false
-                didFallbackToHTMLString = false
-                return false
-            }
-        }
-
-        func prepareTempFile(html: String, in baseURL: URL) throws -> URL {
-            cleanupTempFile()
-
-            let tempFile = baseURL.appendingPathComponent(".mdgitview-preview.html")
-            try html.write(to: tempFile, atomically: true, encoding: .utf8)
-            tempFileURL = tempFile
-            return tempFile
+            resourceHandler.unregister(identifier: activeDocumentID)
         }
 
         // MARK: - WKNavigationDelegate
@@ -88,15 +50,12 @@ struct MarkdownWebView: NSViewRepresentable {
                 return
             }
 
-            if MarkdownLinkPolicy.isInPageAnchor(targetURL, currentFileURL: parent.currentFileURL) {
+            if isInPageAnchor(targetURL) {
                 decisionHandler(.allow)
                 return
             }
 
-            if let markdownTargetURL = MarkdownLinkPolicy.markdownTargetURL(
-                targetURL,
-                currentFileURL: parent.currentFileURL
-            ) {
+            if let markdownTargetURL = markdownTargetURL(for: targetURL) {
                 parent.onOpenMarkdownLink(markdownTargetURL)
                 decisionHandler(.cancel)
                 return
@@ -121,15 +80,12 @@ struct MarkdownWebView: NSViewRepresentable {
                 return nil
             }
 
-            if MarkdownLinkPolicy.isInPageAnchor(targetURL, currentFileURL: parent.currentFileURL) {
+            if isInPageAnchor(targetURL) {
                 webView.load(navigationAction.request)
                 return nil
             }
 
-            if let markdownTargetURL = MarkdownLinkPolicy.markdownTargetURL(
-                targetURL,
-                currentFileURL: parent.currentFileURL
-            ) {
+            if let markdownTargetURL = markdownTargetURL(for: targetURL) {
                 parent.onOpenMarkdownLink(markdownTargetURL)
                 return nil
             }
@@ -144,7 +100,6 @@ struct MarkdownWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             didLoadDocument = true
-            isUsingFileURLLoad = false
             if let anchor = pendingAnchor {
                 scrollToAnchor(anchor, in: webView)
                 pendingAnchor = nil
@@ -156,16 +111,45 @@ struct MarkdownWebView: NSViewRepresentable {
             didFailProvisionalNavigation navigation: WKNavigation!,
             withError error: Error
         ) {
-            fallbackToHTMLStringIfNeeded(in: webView, error: error)
+            guard (error as NSError).code != NSURLErrorCancelled else { return }
+            NSLog("Markdown preview load failed: %@", error.localizedDescription)
         }
 
-        func fallbackToHTMLStringIfNeeded(in webView: WKWebView, error: Error) {
-            guard isUsingFileURLLoad, !didFallbackToHTMLString else { return }
-            guard (error as NSError).code != NSURLErrorCancelled else { return }
-            didFallbackToHTMLString = true
-            isUsingFileURLLoad = false
-            webView.loadHTMLString(parent.htmlDocument, baseURL: parent.baseURL)
-            parent.onRequestFolderAccess?()
+        func loadDocument(in webView: WKWebView) {
+            webView.stopLoading()
+            resourceHandler.unregister(identifier: activeDocumentID)
+            guard let registered = resourceHandler.register(
+                html: parent.htmlDocument,
+                baseDirectory: parent.baseURL,
+                allowedRootDirectory: parent.allowedRootURL
+            ) else {
+                parent.onRequestFolderAccess?()
+                return
+            }
+
+            activeDocumentID = registered.identifier
+            webView.load(URLRequest(url: registered.url))
+        }
+
+        private func isInPageAnchor(_ url: URL) -> Bool {
+            if resourceHandler.isDocumentURL(url, identifier: activeDocumentID),
+               !(url.fragment ?? "").isEmpty {
+                return true
+            }
+            return MarkdownLinkPolicy.isInPageAnchor(url, currentFileURL: parent.currentFileURL)
+        }
+
+        private func markdownTargetURL(for url: URL) -> URL? {
+            if let localURL = resourceHandler.localFileURL(for: url) {
+                return MarkdownLinkPolicy.markdownTargetURL(
+                    localURL,
+                    currentFileURL: parent.currentFileURL
+                )
+            }
+            return MarkdownLinkPolicy.markdownTargetURL(
+                url,
+                currentFileURL: parent.currentFileURL
+            )
         }
 
         // MARK: - Anchor scrolling
@@ -206,6 +190,10 @@ struct MarkdownWebView: NSViewRepresentable {
 
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences = preferences
+        configuration.setURLSchemeHandler(
+            context.coordinator.resourceHandler,
+            forURLScheme: MarkdownResourceSchemeHandler.scheme
+        )
 
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.setValue(false, forKey: "drawsBackground")
@@ -219,28 +207,19 @@ struct MarkdownWebView: NSViewRepresentable {
         context.coordinator.parent = self
         let shouldReload = context.coordinator.lastLoadedHTML != htmlDocument
             || context.coordinator.lastLoadedBaseURL != baseURL
+            || context.coordinator.lastLoadedAllowedRootURL != allowedRootURL
+            || context.coordinator.lastLoadedFileURL != currentFileURL
 
         if shouldReload {
             context.coordinator.lastLoadedHTML = htmlDocument
             context.coordinator.lastLoadedBaseURL = baseURL
+            context.coordinator.lastLoadedAllowedRootURL = allowedRootURL
+            context.coordinator.lastLoadedFileURL = currentFileURL
             context.coordinator.didLoadDocument = false
             context.coordinator.pendingAnchor = navigateToAnchor
             context.coordinator.lastHandledAnchor = nil
 
-            // Try loadFileURL first (enables local image loading)
-            let loaded = context.coordinator.loadViaFileURL(
-                html: htmlDocument,
-                baseURL: baseURL,
-                allowedRootURL: allowedRootURL,
-                in: webView
-            )
-
-            if !loaded {
-                // Fallback: loadHTMLString (images won't show, but text renders)
-                webView.loadHTMLString(htmlDocument, baseURL: baseURL)
-                // Notify that folder access is needed
-                onRequestFolderAccess?()
-            }
+            context.coordinator.loadDocument(in: webView)
             return
         }
 

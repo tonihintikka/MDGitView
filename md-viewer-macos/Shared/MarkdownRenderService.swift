@@ -15,12 +15,6 @@ enum MarkdownRenderServiceError: LocalizedError {
 }
 
 final class MarkdownRenderService {
-    private let bundle: Bundle
-
-    init(bundle: Bundle = .main) {
-        self.bundle = bundle
-    }
-
     func render(fileURL: URL) async throws -> RenderedPayload {
         let hasSecurityScope = fileURL.startAccessingSecurityScopedResource()
         defer {
@@ -71,55 +65,25 @@ final class MarkdownRenderService {
         enableMermaid: Bool,
         enableMath: Bool
     ) -> String {
-        let nonce = UUID().uuidString
-        let css = loadResource(named: "github-markdown", ext: "css")
-        let mermaidJS = loadResource(named: "mermaid.min", ext: "js")
-        let mathJaxJS = loadResource(named: "mathjax", ext: "js")
-        let shellJS = loadResource(named: "viewer-shell", ext: "js")
-
         return """
         <!doctype html>
         <html>
         <head>
           <meta charset=\"utf-8\">
           <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-          <meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: file:; style-src 'unsafe-inline'; script-src 'nonce-\(nonce)';\">
-          <style>
-          \(css)
-          </style>
+          <meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; base-uri mdgitview:; img-src data: mdgitview:; script-src mdgitview:; style-src mdgitview: 'unsafe-inline'; font-src data: mdgitview:;\">
+          <link rel=\"stylesheet\" href=\"mdgitview://runtime/github-markdown.css\">
         </head>
         <body class=\"markdown-body \(theme)\" data-enable-mermaid=\"\(enableMermaid)\" data-enable-math=\"\(enableMath)\">
           <article>
           \(content)
           </article>
-          <script nonce=\"\(nonce)\">
-          \(mermaidJS)
-          </script>
-          <script nonce=\"\(nonce)\">
-          \(mathJaxJS)
-          </script>
-          <script nonce=\"\(nonce)\">
-          \(shellJS)
-          </script>
+          <script src=\"mdgitview://runtime/mermaid.min.js\" defer></script>
+          <script src=\"mdgitview://runtime/mathjax.js\" defer></script>
+          <script src=\"mdgitview://runtime/viewer-shell.js\" defer></script>
         </body>
         </html>
         """
-    }
-
-    private func loadResource(named: String, ext: String) -> String {
-        let candidates: [URL?] = [
-            bundle.url(forResource: named, withExtension: ext, subdirectory: "Assets"),
-            bundle.url(forResource: named, withExtension: ext)
-        ]
-
-        for url in candidates.compactMap({ $0 }) {
-            if let data = try? Data(contentsOf: url),
-               let text = String(data: data, encoding: .utf8) {
-                return text
-            }
-        }
-
-        return ""
     }
 
     private func resolveAllowedRootDirectory(for baseDirectory: URL) -> URL {

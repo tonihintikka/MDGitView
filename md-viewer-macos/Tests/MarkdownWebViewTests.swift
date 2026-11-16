@@ -1,194 +1,59 @@
 import XCTest
-import WebKit
 @testable import MDGitView
 
-@MainActor
 final class MarkdownWebViewTests: XCTestCase {
-    final class SpyWebView: WKWebView {
-        private(set) var lastHTMLString: String?
-        private(set) var lastBaseURL: URL?
-        private(set) var loadedFileURL: URL?
-        private(set) var allowedReadAccessURL: URL?
-
-        init() {
-            super.init(frame: .zero, configuration: WKWebViewConfiguration())
-        }
-
-        @available(*, unavailable)
-        required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
-        }
-
-        override func loadHTMLString(_ string: String, baseURL: URL?) -> WKNavigation? {
-            lastHTMLString = string
-            lastBaseURL = baseURL
-            return nil
-        }
-
-        override func loadFileURL(_ URL: URL, allowingReadAccessTo readAccessURL: URL) -> WKNavigation? {
-            loadedFileURL = URL
-            allowedReadAccessURL = readAccessURL
-            return nil
-        }
-    }
-
-    func testPreparingTempFileTwiceKeepsLatestHTMLOnDisk() throws {
-        let rootDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.removeItem(at: rootDirectory)
-        }
-
-        let markdownView = MarkdownWebView(
-            htmlDocument: "",
-            baseURL: nil,
-            allowedRootURL: nil,
-            currentFileURL: nil,
-            navigateToAnchor: nil,
-            onOpenMarkdownLink: { _ in },
-            onOpenExternalLink: { _ in },
-            onDidNavigateToAnchor: {}
-        )
-        let coordinator = markdownView.makeCoordinator()
-
-        let firstURL = try coordinator.prepareTempFile(html: "<p>first</p>", in: rootDirectory)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: firstURL.path))
-
-        let secondURL = try coordinator.prepareTempFile(html: "<p>second</p>", in: rootDirectory)
-        XCTAssertEqual(secondURL, firstURL)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: secondURL.path))
-        XCTAssertEqual(try String(contentsOf: secondURL, encoding: .utf8), "<p>second</p>")
-    }
-
-    func testFailedFileURLLoadFallsBackToHTMLString() throws {
-        let rootDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.removeItem(at: rootDirectory)
-        }
-
-        var folderAccessRequests = 0
-        let html = "<p>visible text</p>"
-        let markdownView = MarkdownWebView(
-            htmlDocument: html,
-            baseURL: rootDirectory,
-            allowedRootURL: rootDirectory.deletingLastPathComponent(),
-            currentFileURL: nil,
-            navigateToAnchor: nil,
-            onOpenMarkdownLink: { _ in },
-            onOpenExternalLink: { _ in },
-            onDidNavigateToAnchor: {},
-            onRequestFolderAccess: {
-                folderAccessRequests += 1
-            }
-        )
-        let coordinator = markdownView.makeCoordinator()
-        let webView = SpyWebView()
-
-        XCTAssertTrue(coordinator.loadViaFileURL(
-            html: html,
-            baseURL: rootDirectory,
-            allowedRootURL: rootDirectory.deletingLastPathComponent(),
-            in: webView
+    func testPreviewUsesCustomSchemeWithoutWritingIntoDocumentFolder() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let handler = MarkdownResourceSchemeHandler()
+        let registered = try XCTUnwrap(handler.register(
+            html: "<html><head></head><body>Preview</body></html>",
+            baseDirectory: directory,
+            allowedRootDirectory: directory
         ))
-        XCTAssertNotNil(webView.loadedFileURL)
+        defer { handler.unregister(identifier: registered.identifier) }
 
-        coordinator.webView(
-            webView,
-            didFailProvisionalNavigation: nil,
-            withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorNoPermissionsToReadFile)
-        )
-
-        XCTAssertEqual(webView.lastHTMLString, html)
-        XCTAssertEqual(webView.lastBaseURL, rootDirectory)
-        XCTAssertEqual(folderAccessRequests, 1)
+        XCTAssertEqual(registered.url.scheme, MarkdownResourceSchemeHandler.scheme)
+        XCTAssertTrue(handler.isDocumentURL(registered.url, identifier: registered.identifier))
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent(".mdgitview-preview.html").path
+        ))
     }
 
-    func testPostLoadFailureDoesNotReplaceVisibleFileDocument() throws {
-        let rootDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.removeItem(at: rootDirectory)
-        }
+    func testLocalResourcesAreLimitedToAllowedRoot() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
 
-        var folderAccessRequests = 0
-        let html = "<p>visible text</p>"
-        let markdownView = MarkdownWebView(
-            htmlDocument: html,
-            baseURL: rootDirectory,
-            allowedRootURL: rootDirectory.deletingLastPathComponent(),
-            currentFileURL: nil,
-            navigateToAnchor: nil,
-            onOpenMarkdownLink: { _ in },
-            onOpenExternalLink: { _ in },
-            onDidNavigateToAnchor: {},
-            onRequestFolderAccess: {
-                folderAccessRequests += 1
-            }
-        )
-        let coordinator = markdownView.makeCoordinator()
-        let webView = SpyWebView()
+        let allowedRoot = directory.appendingPathComponent("repo", isDirectory: true)
+        let baseDirectory = allowedRoot.appendingPathComponent("docs", isDirectory: true)
+        try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
 
-        XCTAssertTrue(coordinator.loadViaFileURL(
-            html: html,
-            baseURL: rootDirectory,
-            allowedRootURL: rootDirectory.deletingLastPathComponent(),
-            in: webView
+        let handler = MarkdownResourceSchemeHandler()
+        let registered = try XCTUnwrap(handler.register(
+            html: "<html><head></head><body>Preview</body></html>",
+            baseDirectory: baseDirectory,
+            allowedRootDirectory: allowedRoot
+        ))
+        defer { handler.unregister(identifier: registered.identifier) }
+
+        let inRootURL = try XCTUnwrap(URL(string:
+            "mdgitview://\(registered.identifier)/__root__/README.md"
+        ))
+        let outsideRootURL = try XCTUnwrap(URL(string:
+            "mdgitview://\(registered.identifier)/outside.txt"
         ))
 
-        coordinator.webView(webView, didFinish: nil)
-        coordinator.webView(
-            webView,
-            didFailProvisionalNavigation: nil,
-            withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorNoPermissionsToReadFile)
+        XCTAssertEqual(
+            handler.localFileURL(for: inRootURL)?.path,
+            allowedRoot.appendingPathComponent("README.md").path
         )
-
-        XCTAssertNil(webView.lastHTMLString)
-        XCTAssertEqual(folderAccessRequests, 0)
+        XCTAssertNil(handler.localFileURL(for: outsideRootURL))
     }
 
-    func testCancelledProvisionalNavigationDoesNotFallback() throws {
-        let rootDirectory = FileManager.default.temporaryDirectory
+    private func makeTemporaryDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.removeItem(at: rootDirectory)
-        }
-
-        var folderAccessRequests = 0
-        let markdownView = MarkdownWebView(
-            htmlDocument: "<p>visible text</p>",
-            baseURL: rootDirectory,
-            allowedRootURL: rootDirectory.deletingLastPathComponent(),
-            currentFileURL: nil,
-            navigateToAnchor: nil,
-            onOpenMarkdownLink: { _ in },
-            onOpenExternalLink: { _ in },
-            onDidNavigateToAnchor: {},
-            onRequestFolderAccess: {
-                folderAccessRequests += 1
-            }
-        )
-        let coordinator = markdownView.makeCoordinator()
-        let webView = SpyWebView()
-
-        XCTAssertTrue(coordinator.loadViaFileURL(
-            html: "<p>visible text</p>",
-            baseURL: rootDirectory,
-            allowedRootURL: rootDirectory.deletingLastPathComponent(),
-            in: webView
-        ))
-
-        coordinator.webView(
-            webView,
-            didFailProvisionalNavigation: nil,
-            withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)
-        )
-
-        XCTAssertNil(webView.lastHTMLString)
-        XCTAssertEqual(folderAccessRequests, 0)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 }

@@ -44,7 +44,7 @@ fi
 
 xcodebuild \
   "${XCODEBUILD_ARGS[@]}" \
-  build 2>&1 | tail -5
+  clean build 2>&1 | tail -5
 
 if [ ! -d "${SOURCE_APP}" ]; then
   echo "error: Build failed — ${SOURCE_APP} not found." >&2

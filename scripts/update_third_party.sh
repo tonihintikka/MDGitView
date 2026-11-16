@@ -9,7 +9,8 @@ THIRD_PARTY_DIR="${ROOT_DIR}/md-viewer-macos/Resources/ThirdParty"
 VERSIONS_FILE="${THIRD_PARTY_DIR}/versions.json"
 
 MERMAID_VERSION="${MERMAID_VERSION:-11.15.0}"
-MATHJAX_VERSION="${MATHJAX_VERSION:-4.1.2}"
+MATHJAX_VERSION="${MATHJAX_VERSION:-4.1.3}"
+MATHJAX_FONT_VERSION="${MATHJAX_FONT_VERSION:-4.1.3}"
 
 if ! command -v npm >/dev/null 2>&1; then
   echo "error: npm is required to download third-party runtimes." >&2
@@ -25,9 +26,11 @@ trap cleanup EXIT
 download_npm_package() {
   local name="$1"
   local version="$2"
+  local package_slug="${name//@/}"
+  package_slug="${package_slug//\//-}"
   pushd "${WORK_DIR}" >/dev/null
-  npm pack "${name}@${version}" >/dev/null
-  local tarball="${name}-${version}.tgz"
+  npm pack "${name}@${version}" --silent >/dev/null
+  local tarball="${package_slug}-${version}.tgz"
   tar -xzf "${tarball}"
   popd >/dev/null
   echo "${WORK_DIR}/package"
@@ -57,6 +60,10 @@ window.MathJax = {
     inlineMath: {'[+]': [['$', '$'], ['\\(', '\\)']]},
     displayMath: {'[+]': [['$$', '$$'], ['\\[', '\\]']]}
   },
+  chtml: {
+    fontURL: '/__runtime/mathjax-fonts/chtml/woff2',
+    dynamicPrefix: '/__runtime/mathjax-fonts/chtml/dynamic'
+  },
   startup: {
     typeset: false
   }
@@ -64,6 +71,18 @@ window.MathJax = {
 MATHJAX_CONFIG
 cat "${MATHJAX_SRC}" >> "${ASSETS_DIR}/mathjax.js"
 echo "    wrote ${ASSETS_DIR}/mathjax.js ($(wc -c < "${ASSETS_DIR}/mathjax.js") bytes)"
+
+echo "==> Downloading @mathjax/mathjax-newcm-font@${MATHJAX_FONT_VERSION}..."
+MATHJAX_FONT_PKG="$(download_npm_package @mathjax/mathjax-newcm-font "${MATHJAX_FONT_VERSION}")"
+MATHJAX_FONT_SRC="${MATHJAX_FONT_PKG}/chtml"
+if [[ ! -d "${MATHJAX_FONT_SRC}" ]]; then
+  echo "error: ${MATHJAX_FONT_SRC} not found in font package." >&2
+  exit 1
+fi
+rm -rf "${ASSETS_DIR}/mathjax-fonts"
+mkdir -p "${ASSETS_DIR}/mathjax-fonts"
+cp -R "${MATHJAX_FONT_SRC}" "${ASSETS_DIR}/mathjax-fonts/chtml"
+echo "    wrote MathJax font assets ($(find "${ASSETS_DIR}/mathjax-fonts" -type f | wc -l | tr -d ' ') files)"
 
 UPDATED_ON="$(date -u +"%Y-%m-%d")"
 cat > "${VERSIONS_FILE}" <<EOF
@@ -82,7 +101,14 @@ cat > "${VERSIONS_FILE}" <<EOF
       "version": "${MATHJAX_VERSION}",
       "license": "Apache-2.0",
       "source": "https://www.npmjs.com/package/mathjax",
-      "notes": "Local config preamble + tex-chtml.js (TeX input, CHTML output, fonts included)."
+      "notes": "Local config preamble + tex-chtml.js (TeX input, CHTML output); fonts are vendored separately."
+    },
+    "mathjax-fonts": {
+      "package": "@mathjax/mathjax-newcm-font",
+      "version": "${MATHJAX_FONT_VERSION}",
+      "license": "Apache-2.0",
+      "source": "https://www.npmjs.com/package/@mathjax/mathjax-newcm-font",
+      "notes": "CHTML font files loaded on demand by the local WebKit resource scheme."
     }
   }
 }

@@ -2,17 +2,33 @@ import SwiftUI
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    var openFileHandler: ((URL) -> Void)?
-
-    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        openFileHandler?(URL(fileURLWithPath: filename))
-        return true
+    var openFileHandler: ((URL) -> Void)? {
+        didSet {
+            deliverPendingFiles()
+        }
     }
 
+    private var pendingFileURLs: [URL] = []
+
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where url.isFileURL {
-            openFileHandler?(url)
+        let fileURLs = urls.filter(\.isFileURL)
+
+        guard let openFileHandler else {
+            for url in fileURLs where !pendingFileURLs.contains(url) {
+                pendingFileURLs.append(url)
+            }
+            return
         }
+
+        fileURLs.forEach(openFileHandler)
+    }
+
+    private func deliverPendingFiles() {
+        guard let openFileHandler, !pendingFileURLs.isEmpty else { return }
+
+        let urls = pendingFileURLs
+        pendingFileURLs.removeAll()
+        urls.forEach(openFileHandler)
     }
 }
 
@@ -23,7 +39,7 @@ struct MDGitViewApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        WindowGroup {
+        Window("MDGitView", id: "main") {
             ContentView(viewModel: viewModel)
                 .onAppear {
                     appDelegate.openFileHandler = { url in
@@ -31,17 +47,6 @@ struct MDGitViewApp: App {
                     }
 
                     viewModel.checkIfDefaultMarkdownViewer()
-
-                    guard CommandLine.arguments.count > 1 else { return }
-                    let potentialPath = CommandLine.arguments[1]
-                    let fileURL = URL(fileURLWithPath: potentialPath)
-                    if FileManager.default.fileExists(atPath: fileURL.path) {
-                        viewModel.openDocumentFromPicker(at: fileURL)
-                    }
-                }
-                .onOpenURL { url in
-                    guard url.isFileURL else { return }
-                    viewModel.openDocumentFromPicker(at: url)
                 }
         }
         .defaultSize(width: 1200, height: 780)

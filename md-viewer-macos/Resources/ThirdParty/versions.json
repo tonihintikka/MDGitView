@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-23",
+  "updated": "2026-11-05",
   "assets": {
     "mermaid.min.js": {
       "package": "mermaid",
@@ -10,10 +10,17 @@
     },
     "mathjax.js": {
       "package": "mathjax",
-      "version": "4.1.2",
+      "version": "4.1.3",
       "license": "Apache-2.0",
       "source": "https://www.npmjs.com/package/mathjax",
-      "notes": "Local config preamble + tex-chtml.js (TeX input, CHTML output, fonts included)."
+      "notes": "Local config preamble + tex-chtml.js (TeX input, CHTML output); fonts are vendored separately."
+    },
+    "mathjax-fonts": {
+      "package": "@mathjax/mathjax-newcm-font",
+      "version": "4.1.3",
+      "license": "Apache-2.0",
+      "source": "https://www.npmjs.com/package/@mathjax/mathjax-newcm-font",
+      "notes": "CHTML font files loaded on demand by the local WebKit resource scheme."
     }
   }
 }

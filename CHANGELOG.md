@@ -2,6 +2,12 @@
 
 All notable changes to MDGitView are documented here.
 
+## Unreleased
+
+### Fixed
+- Double-clicking a Markdown file in Finder now opens it in MDGitView's single main window instead of creating two viewer windows.
+- File-open events received during app startup are queued until the main view is ready.
+
 ## [0.5.1] - 2026-02-19
 
 ### Fixed
