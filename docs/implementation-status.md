@@ -1,22 +1,26 @@
 # Implementation status
 
-## Done in this repository
+Last reviewed: 2026-11-16
 
-- Rust markdown rendering engine with structured output (`html`, `toc`, `diagnostics`).
-- C ABI wrapper for Swift integration.
-- SwiftUI macOS app scaffold with markdown rendering and fallback behavior.
-- Quick Look preview and thumbnail extension scaffolds.
-- Security-oriented defaults: sandbox entitlements, no network entitlements, hardened runtime flag.
-- Notarization helper script and setup docs.
+## Implemented
 
-## Remaining for full production parity
+- SwiftUI macOS viewer with single-window Finder file opening, navigation history, TOC, diagnostics, refresh, editor, and Finder actions.
+- Rust renderer and C ABI bridge.
+- GFM tables, task lists, strikethrough, footnotes, smart punctuation, Mermaid fence conversion, heading anchors, HTML sanitization, and local-resource diagnostics.
+- Main-app WebKit resource serving through `MarkdownResourceSchemeHandler` and `mdgitview:` URLs. Generated preview HTML is kept out of user folders.
+- Bundled Mermaid and MathJax runtimes, with MathJax CHTML fonts available locally.
+- Quick Look preview and thumbnail extension targets.
+- Debug install and GitHub zip release scripts.
 
-- Install missing toolchains and run full build/test loop (`cargo`, full Xcode, xcodegen).
-- Add syntax highlighting runtime/theme parity with GitHub (e.g. Prism/Highlight.js assets vendored offline).
-- Validate extension registration and behavior in a signed app build on target macOS versions.
+## Verified on 2026-11-16
 
-## Vendored third-party runtimes (maintained)
+- Xcode test scheme: 5 tests passed.
+- Installed app launched successfully.
+- Mermaid flowchart, MathJax inline equation, and display integral rendered in the installed app with no diagnostics warnings.
 
-- Mermaid and MathJax are vendored offline under `md-viewer-macos/Resources/Assets/`.
-- Pinned versions: `md-viewer-macos/Resources/ThirdParty/versions.json`.
-- Refresh with `./scripts/update_third_party.sh` whenever Rust deps or security advisories are reviewed — see [DEVELOPMENT.md](../DEVELOPMENT.md#dependency-updates).
+## Distribution notes
+
+- App version: see `MARKETING_VERSION` in `md-viewer-macos/project.yml`.
+- GitHub Releases are produced by `scripts/release.sh`.
+- A Homebrew Cask tap has not been created yet.
+- `scripts/release.sh` does not sign, notarize, or staple a Developer ID release.

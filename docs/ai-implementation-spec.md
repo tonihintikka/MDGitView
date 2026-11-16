@@ -1,5 +1,7 @@
 # AI Implementation Specification: macOS Rust Markdown Viewer
 
+> This specification describes the current repository implementation. For current release state read [`../now.md`](../now.md); for stable agent rules read [`agent-context.md`](agent-context.md).
+
 ## 1. Goal
 
 Build a macOS Markdown viewer with:
@@ -332,6 +334,25 @@ Manual acceptance checklist:
 - Current TOC heading parser is line-based and does not parse headings hidden in fenced code blocks; replicate as-is unless intentionally improving behavior.
 
 ## 12. Reimplementation invariants
+
+## 13. Current implementation details
+
+The main app uses a custom WebKit scheme handler. Do not use the older pattern of writing `.mdgitview-preview.html` beside the opened Markdown file or embedding multi-megabyte runtime bundles into the HTML. The app assigns a UUID to each rendered document and loads its generated HTML from `mdgitview://<uuid>/...`. `MarkdownResourceSchemeHandler` serves:
+
+- Generated document HTML with MIME type `text/html`.
+- The small runtime CSS and JavaScript resources from the app bundle, cached in memory.
+- MathJax dynamic CHTML modules and WOFF2 fonts from `Resources/Assets/mathjax-fonts/`.
+- Local images and linked Markdown files after checking the decoded path, canonicalized symlinks, document ID, and allowed root directory.
+
+The handler is registered only on the main app `WKWebView`. It is per-document state and must be unregistered on document replacement or coordinator deallocation. `MarkdownRenderService` emits runtime URLs and CSP rules; the handler rewrites the runtime host to the registered document ID and adds the document base URL.
+
+The Quick Look preview extension shares the Rust renderer and bundled resources, but uses a data-based `QLPreviewReply`. Keep its flow separate and validate its file permissions on macOS.
+
+The resource root is the Git repository root when the file belongs to a repository, otherwise the opened file's directory. The Swift handler also requires the base directory to sit under that root. The Rust renderer must keep its independent path policy and HTML sanitization; the handler is not a replacement for either.
+
+## 14. Version and release source of truth
+
+Set `MARKETING_VERSION` and increment `CURRENT_PROJECT_VERSION` in `md-viewer-macos/project.yml`. `scripts/release.sh` reads that version, builds Release, packages the `.app` into `MDGitView-v<version>-macOS.zip`, and creates the matching GitHub tag and release. Commit and push the source before running the release script. It does not notarize the app.
 
 If rewriting the system, preserve these invariants to keep behavior consistent:
 

@@ -2,11 +2,20 @@
 
 All notable changes to MDGitView are documented here.
 
-## Unreleased
+## [0.5.2] - 2026-11-16
+
+### Added
+- Serve the main viewer's generated HTML, local resources, and bundled runtime assets through a custom `mdgitview:` URL scheme, without writing preview HTML into user folders.
+- Bundle MathJax CHTML font assets locally so math rendering works without network access.
 
 ### Fixed
 - Double-clicking a Markdown file in Finder now opens it in MDGitView's single main window instead of creating two viewer windows.
 - File-open events received during app startup are queued until the main view is ready.
+- Local WebKit resources are resolved through the document's allowed root directory and checked for path traversal and symlinks.
+
+### Changed
+- Update the vendored MathJax runtime and its update workflow.
+- Update Rust dependency lockfile.
 
 ## [0.5.1] - 2026-02-19
 

@@ -3,7 +3,7 @@
 macOS Markdown viewer with a Rust rendering core and SwiftUI + Quick Look integration.
 Browse markdown files in your projects like you would on GitHub — with Mermaid diagrams, table of contents, and link navigation between documents.
 
-**Created by Toni Hintikka together with Codex 5.3 and Claude Code (Opus 4.6).**
+**Created by Toni Hintikka with AI coding assistants.**
 
 ![MDGitView screenshot](docs/screenshot.png)
 
@@ -26,6 +26,12 @@ Browse markdown files in your projects like you would on GitHub — with Mermaid
 - **Link navigation** — click links between markdown files in the same project
 - **Local images** — relative image paths resolve correctly
 - **HTML sanitization** — unsafe content is filtered out
+
+## How it works
+
+The Rust `md-engine` crate parses Markdown, builds the table of contents, applies the local-resource policy, and sanitizes HTML. The `md-ffi` crate exposes that renderer to the Swift app through a C ABI. The macOS app presents the result in WebKit and serves the generated document, bundled assets, and permitted local files through a private `mdgitview:` URL scheme. No remote scripts or stylesheets are needed.
+
+Quick Look preview and thumbnail extensions are separate targets. The preview extension uses the shared Rust renderer and its own Quick Look HTML reply; it does not use the app's `WKURLSchemeHandler`.
 
 ## Quick Look
 
@@ -80,6 +86,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, project layout, and contributing guidelines.
 
 When updating dependencies, review **Rust crates**, **vendored third-party JS** (Mermaid, MathJax), and the **Xcode SDK** — see [Dependency updates](DEVELOPMENT.md#dependency-updates).
+
+For architecture, security boundaries, release steps, and project-specific AI agent context, see [the documentation index](docs/README.md) and [now.md](now.md).
 
 ## Open source credits (Mermaid)
 

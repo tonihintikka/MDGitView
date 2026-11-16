@@ -214,6 +214,20 @@ Quick Look smoke tests:
 
 ## 14. Final acceptance criteria
 
+## 15. Current repository-specific checks
+
+Before considering the recreation complete:
+
+- Build the main app and run its Xcode test scheme.
+- Open a fixture containing a Mermaid flowchart, inline TeX, and display TeX in the installed app. Confirm the diagram is SVG-rendered and MathJax output is typeset.
+- Confirm generated HTML is served by `MarkdownResourceSchemeHandler` over `mdgitview:` and no preview HTML file is created in the Markdown directory.
+- Confirm a relative image inside the allowed root loads, while traversal and symlink escapes are refused.
+- Open the same fixture in Quick Look. Verify the separate `QLPreviewReply` flow, preview HTML, local CSS/JS, and the "Open in MDGitView" action.
+- Verify opening a Markdown file from Finder reuses the app's single main window.
+- Build the Release app and inspect the zip before publishing. Version comes from `md-viewer-macos/project.yml`; release packaging does not imply notarization.
+
+The security boundary and architecture details in [`agent-context.md`](agent-context.md) and [`ai-implementation-spec.md`](ai-implementation-spec.md) supersede older implementation descriptions in this playbook.
+
 System is considered equivalent when:
 
 1. Markdown renders in app with light/dark readability.
