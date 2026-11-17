@@ -10,4 +10,3 @@ crate-type = ["cdylib", "staticlib"]
 md-engine = { path = "../md-engine" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-once_cell = { workspace = true }

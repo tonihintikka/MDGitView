@@ -1,25 +1,20 @@
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use std::sync::Mutex;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use md_engine::{render_markdown, RenderOptions};
-use once_cell::sync::Lazy;
 
-static LAST_ERROR: Lazy<Mutex<CString>> =
-    Lazy::new(|| Mutex::new(CString::new("no_error").expect("static cstring")));
-static LOCK_POISONED: Lazy<CString> =
-    Lazy::new(|| CString::new("ffi lock poisoned").expect("static cstring"));
 thread_local! {
-    static LAST_ERROR_SNAPSHOT: RefCell<CString> =
-        RefCell::new(CString::new("no_error").expect("static cstring"));
+    static LAST_ERROR: RefCell<CString> = RefCell::new(CString::new("no_error").unwrap());
 }
 
 fn set_last_error(message: impl AsRef<str>) {
-    let safe = sanitize_for_c(message.as_ref());
-    if let Ok(mut guard) = LAST_ERROR.lock() {
-        *guard = safe;
-    }
+    LAST_ERROR.with(|cell| *cell.borrow_mut() = sanitize_for_c(message.as_ref()));
+}
+
+fn clear_last_error() {
+    LAST_ERROR.with(|cell| *cell.borrow_mut() = CString::new("no_error").unwrap());
 }
 
 fn sanitize_for_c(value: &str) -> CString {
@@ -40,7 +35,38 @@ fn cstr_to_str<'a>(ptr: *const c_char) -> Result<&'a str, String> {
 }
 
 #[no_mangle]
-pub extern "C" fn md_render(markdown_utf8: *const c_char, options_json: *const c_char) -> *mut c_char {
+pub extern "C" fn md_render(
+    markdown_utf8: *const c_char,
+    options_json: *const c_char,
+) -> *mut c_char {
+    md_render_guarded(markdown_utf8, options_json, false)
+}
+
+fn md_render_guarded(
+    markdown_utf8: *const c_char,
+    options_json: *const c_char,
+    force_panic: bool,
+) -> *mut c_char {
+    match catch_unwind(AssertUnwindSafe(|| {
+        md_render_inner(markdown_utf8, options_json, force_panic)
+    })) {
+        Ok(result) => result,
+        Err(payload) => {
+            set_last_error(format!("renderer panicked: {}", panic_message(payload)));
+            std::ptr::null_mut()
+        }
+    }
+}
+
+fn md_render_inner(
+    markdown_utf8: *const c_char,
+    options_json: *const c_char,
+    force_panic: bool,
+) -> *mut c_char {
+    if force_panic {
+        panic!("test panic from renderer");
+    }
+
     let markdown = match cstr_to_str(markdown_utf8) {
         Ok(value) => value,
         Err(error) => {
@@ -82,11 +108,24 @@ pub extern "C" fn md_render(markdown_utf8: *const c_char, options_json: *const c
     };
 
     match CString::new(payload) {
-        Ok(value) => value.into_raw(),
+        Ok(value) => {
+            clear_last_error();
+            value.into_raw()
+        }
         Err(_) => {
             set_last_error("render payload contained interior null byte");
             std::ptr::null_mut()
         }
+    }
+}
+
+fn panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_string()
+    } else if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else {
+        "unknown panic payload".to_string()
     }
 }
 
@@ -104,13 +143,46 @@ pub extern "C" fn md_free_result(result_ptr: *mut c_char) {
 
 #[no_mangle]
 pub extern "C" fn md_last_error() -> *const c_char {
-    let snapshot = match LAST_ERROR.lock() {
-        Ok(guard) => guard.clone(),
-        Err(_) => LOCK_POISONED.clone(),
-    };
+    LAST_ERROR.with(|cell| cell.borrow().as_ptr())
+}
 
-    LAST_ERROR_SNAPSHOT.with(|cell| {
-        *cell.borrow_mut() = snapshot;
-        cell.borrow().as_ptr()
-    })
+#[cfg(test)]
+mod tests {
+    use super::{md_free_result, md_last_error, md_render_guarded};
+    use std::ffi::{CStr, CString};
+
+    #[test]
+    fn renderer_panic_returns_null_with_thread_local_error() {
+        let markdown = CString::new("# heading").unwrap();
+        let options = CString::new("{}").unwrap();
+        let result = md_render_guarded(markdown.as_ptr(), options.as_ptr(), true);
+
+        assert!(result.is_null());
+        let error = unsafe { CStr::from_ptr(md_last_error()) }.to_str().unwrap();
+        assert!(error.contains("renderer panicked: test panic from renderer"));
+
+        let success = md_render_guarded(markdown.as_ptr(), options.as_ptr(), false);
+        assert!(!success.is_null());
+        let error = unsafe { CStr::from_ptr(md_last_error()) }.to_str().unwrap();
+        assert_eq!(error, "no_error");
+        md_free_result(success);
+    }
+
+    #[test]
+    fn last_error_is_isolated_per_thread() {
+        let worker = std::thread::spawn(|| {
+            let markdown = CString::new("# heading").unwrap();
+            let options = CString::new("{}").unwrap();
+            let result = md_render_guarded(markdown.as_ptr(), options.as_ptr(), true);
+            assert!(result.is_null());
+            unsafe { CStr::from_ptr(md_last_error()) }
+                .to_str()
+                .unwrap()
+                .to_string()
+        });
+
+        assert!(worker.join().unwrap().contains("renderer panicked"));
+        let main_thread_error = unsafe { CStr::from_ptr(md_last_error()) }.to_str().unwrap();
+        assert_eq!(main_thread_error, "no_error");
+    }
 }
