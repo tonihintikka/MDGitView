@@ -1,10 +1,10 @@
 # Quick Look and PDF cache handoff
 
-Updated: 2026-11-16, Europe/Helsinki. Work paused at Toni's explicit request for continuation in a later session, possibly with another model.
+Updated: 2026-11-17, Europe/Helsinki. Continuation of the task is in progress.
 
 ## Start here
 
-Read `now.md`, `docs/agent-context.md`, and the original task `docs/tasks/2026-11-16-quicklook-toc-ffi.md`. This note records new findings and the proposed PDF path. The original task specifies four commits, tests before each commit, and no release. No task commits or push have been made. All implementation changes are still in the working tree on `main`; preserve them and inspect the diff before editing.
+Read `now.md`, `docs/agent-context.md`, and the original task `docs/tasks/2026-11-16-quicklook-toc-ffi.md`. This note records findings and the PDF implementation. The original task specifies four commits, tests before each commit, and no release. All four task commits are on `main`. Do not push or release.
 
 Toni approved leaving MDGitView's Quick Look enabled and Obsidian's Quick Look disabled. He also said rendered Mermaid diagrams and math are welcome in Quick Look, superseding the original task's preference for source-only previews as a product goal. Full PDF-cache integration has not been implemented. His final request was to save this handoff and stop implementation until the next session.
 
@@ -66,6 +66,8 @@ The App Group PDF path is implemented in `PreviewPDFCache.swift`. The signed mai
 
 The main app starts a hidden WebKit render after opening or refreshing a document. It uses the existing `MarkdownRenderService` and resource scheme, waits for Mermaid, MathJax, and fonts, removes Mermaid controls, then writes a continuous PDF. The cache binds the standardized source path and Markdown content digest, checks the app build version, and expires entries after five minutes. Writes are coordinated with a file lock and atomic file replacement. New entries stop when the cache reaches 250 MiB. A cache miss keeps the current safe HTML reply. Since the extension cannot inspect sibling images, a recent PDF can contain an image that changed during its five-minute lifetime.
 
-`cargo test` passes 17 tests, `xcodebuild ... test` passes 5 tests, and `scripts/install.sh` installed the Debug build. The extension launches and obtains App Group access. A cache hit was not confirmed from the extension logs, and the Mac locked during the live Finder screenshot check. No Finder screenshot of the cached PDF was captured. The earlier independent PDF proof of concept remains visually checked at `output/pdf/sample-preview.pdf`.
+`cargo test` passes 17 tests, `xcodebuild ... test` passes 5 tests, and `scripts/install.sh` installed the Debug build. The extension launches and obtains App Group access. When this handoff was first written, the Mac locked during the Finder screenshot check. The earlier independent PDF proof of concept remains visually checked at `output/pdf/sample-preview.pdf`.
 
-Remaining work: after the Mac is unlocked, open a Markdown file in MDGitView, confirm the cache hit in Finder, confirm a cold miss uses HTML, and capture a screenshot. Then finish the original four commit sequence with tests before each commit. Do not push or create a release.
+On 2026-11-17, the unlocked Mac showed Mermaid, inline math, and display math in MDGitView. A fresh `qlmanage -p tests/fixtures/sample.md` launched the signed preview extension, and system logs confirmed App Group lookup success. No cache hit/miss message appeared in the extension logs; shell access to the group container was denied. The Finder preview did not appear in the captured desktop, so the cached PDF has not been visually verified. Do not describe the cache path as manually validated until a hit is confirmed.
+
+Remaining verification: confirm cache generation in the main app, verify hit and cold-miss behavior in Finder, and capture the Quick Look window. The four signed commits are on `main`; no push or release is authorized by the task.

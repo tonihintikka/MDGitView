@@ -62,8 +62,8 @@ final class ViewerViewModel: ObservableObject {
         requestedAnchor = nil
     }
 
-    /// Called when WebView cannot write a temp file to load images.
-    /// Shows an NSOpenPanel so the user can grant folder access.
+    /// Called when the WebKit scheme handler cannot read a local preview resource.
+    /// The folder chooser lets macOS request access before the document is rendered again.
     func requestFolderAccess() {
         needsFolderAccess = true
     }
