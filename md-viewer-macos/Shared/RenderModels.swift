@@ -4,6 +4,7 @@ struct RenderOptions: Codable {
     let enable_gfm: Bool
     let enable_mermaid: Bool
     let enable_math: Bool
+    let embed_local_images: Bool
     let base_dir: String?
     let allowed_root_dir: String?
     let theme: String
@@ -13,6 +14,7 @@ struct RenderOptions: Codable {
             enable_gfm: true,
             enable_mermaid: true,
             enable_math: true,
+            embed_local_images: false,
             base_dir: baseDirectory?.path,
             allowed_root_dir: allowedRootDirectory?.path,
             theme: "github-light"

@@ -2,6 +2,17 @@
 
 All notable changes to MDGitView are documented here.
 
+## Unreleased
+
+### Fixed
+- Quick Look preview renders sanitized Markdown HTML with a restrictive CSP, readable local images embedded within size limits, and source notices for Mermaid and math.
+- Quick Look no longer has network-client access or a filesystem exception for `/`.
+- TOC entries and heading IDs now come from parsed Markdown headings, including Setext headings and Unicode slugs.
+- FFI panics now return an error to the calling thread instead of unwinding across the C boundary.
+- Heading slugs no longer discard Finnish letters, math parsing honors its render option, and smart punctuation is disabled to match GitHub.
+- The main view model shares one method for applying successful render results.
+- The main viewer writes rendered PDF previews to a 250 MiB App Group cache. Quick Look uses a matching PDF cached in the last five minutes and falls back to its sandboxed HTML preview on a miss.
+
 ## [0.5.2] - 2026-11-16
 
 ### Added

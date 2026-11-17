@@ -1,4 +1,5 @@
 (function () {
+  window.mdgitviewRenderReady = false;
   var root = document.body;
   if (!root) {
     return;
@@ -397,7 +398,7 @@
 
   function renderMermaid() {
     if (!enableMermaid || !window.mermaid) {
-      return;
+      return Promise.resolve();
     }
 
     normalizeMermaidBlocks();
@@ -410,20 +411,19 @@
 
     var mermaidNodes = document.querySelectorAll('.mermaid');
     if (!mermaidNodes.length) {
-      return;
+      return Promise.resolve();
     }
 
     if (typeof window.mermaid.run === 'function') {
-      Promise.resolve(window.mermaid.run({ querySelector: '.mermaid' })).then(function () {
+      return Promise.resolve(window.mermaid.run({ querySelector: '.mermaid' })).then(function () {
         enableMermaidInteractions();
       }).catch(function () {
-        Promise.resolve(window.mermaid.run()).then(function () {
+        return Promise.resolve(window.mermaid.run()).then(function () {
           enableMermaidInteractions();
         }).catch(function () {
           // Keep Mermaid source visible as fallback.
         });
       });
-      return;
     }
 
     if (typeof window.mermaid.init === 'function') {
@@ -434,33 +434,41 @@
         // Keep Mermaid source visible as fallback.
       }
     }
+    return Promise.resolve();
   }
-
-  renderMermaid();
 
   function renderMath() {
     if (!enableMath || !window.MathJax) {
-      return;
+      return Promise.resolve();
     }
 
     function typeset() {
       if (typeof window.MathJax.typesetPromise !== 'function') {
-        return;
+        return Promise.resolve();
       }
-      window.MathJax.typesetPromise().catch(function () {
+      // pulldown-cmark exposes TeX without delimiters inside these spans.
+      // Restore explicit delimiters for MathJax's document scanner.
+      document.querySelectorAll('.math-inline, .math-display').forEach(function (node) {
+        if (node.dataset.mathPrepared === 'true') { return; }
+        var display = node.classList.contains('math-display');
+        node.textContent = (display ? '\\[' : '\\(') + node.textContent + (display ? '\\]' : '\\)');
+        node.dataset.mathPrepared = 'true';
+      });
+      return window.MathJax.typesetPromise().catch(function () {
         // Keep raw math text visible as fallback.
       });
     }
 
     if (window.MathJax.startup && window.MathJax.startup.promise) {
-      window.MathJax.startup.promise.then(typeset).catch(function () {
+      return window.MathJax.startup.promise.then(typeset).catch(function () {
         // Keep raw math text visible as fallback.
       });
-      return;
     }
 
-    typeset();
+    return typeset();
   }
 
-  renderMath();
+  Promise.all([renderMermaid(), renderMath()]).then(function () {
+    window.mdgitviewRenderReady = true;
+  });
 })();

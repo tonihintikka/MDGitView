@@ -160,13 +160,9 @@ final class ViewerViewModel: ObservableObject {
                 let payload = try await self.renderService.render(fileURL: url)
                 if Task.isCancelled { return }
 
-                self.htmlDocument = payload.htmlDocument
-                self.rawMarkdown = ""
-                self.diagnostics = payload.diagnostics
-                self.toc = payload.toc
-                self.baseURL = payload.baseURL
-                self.allowedRootURL = payload.allowedRootURL
+                self.apply(payload)
                 self.isLoading = false
+                self.cacheQuickLookPDF(payload, for: url)
             } catch {
                 if Task.isCancelled { return }
                 self.errorMessage = error.localizedDescription
@@ -219,14 +215,10 @@ final class ViewerViewModel: ObservableObject {
                 let payload = try await self.renderService.render(fileURL: normalizedURL)
                 if Task.isCancelled { return }
 
-                self.htmlDocument = payload.htmlDocument
-                self.rawMarkdown = ""
-                self.diagnostics = payload.diagnostics
-                self.toc = payload.toc
-                self.baseURL = payload.baseURL
-                self.allowedRootURL = payload.allowedRootURL
+                self.apply(payload)
                 self.requestedAnchor = anchor
                 self.isLoading = false
+                self.cacheQuickLookPDF(payload, for: normalizedURL)
             } catch {
                 if Task.isCancelled { return }
 
@@ -239,6 +231,33 @@ final class ViewerViewModel: ObservableObject {
                 self.allowedRootURL = nil
                 self.requestedAnchor = nil
                 self.isLoading = false
+            }
+        }
+    }
+
+    private func apply(_ payload: RenderedPayload) {
+        htmlDocument = payload.htmlDocument
+        rawMarkdown = ""
+        diagnostics = payload.diagnostics
+        toc = payload.toc
+        baseURL = payload.baseURL
+        allowedRootURL = payload.allowedRootURL
+    }
+
+    private func cacheQuickLookPDF(_ payload: RenderedPayload, for url: URL) {
+        guard let sourceData = try? Data(contentsOf: url) else {
+            NSLog("Quick Look PDF cache skipped: source could not be read")
+            return
+        }
+        Task { @MainActor in
+            do {
+                NSLog("Quick Look PDF cache: rendering %{public}@", url.lastPathComponent)
+                let pdfCacheRenderer = PreviewPDFRenderer()
+                let pdf = try await pdfCacheRenderer.render(payload)
+                try PreviewPDFCache.write(pdf, for: url, sourceData: sourceData)
+                NSLog("Quick Look PDF cache: wrote %{public}@ (%d bytes)", url.lastPathComponent, pdf.count)
+            } catch {
+                NSLog("Quick Look PDF cache skipped: %{public}@", error.localizedDescription)
             }
         }
     }

@@ -44,6 +44,9 @@ targets:
                 - mkdn
     entitlements:
       path: Config/MDViewer.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - 8C2T254JY2.mdgitview.preview
     sources:
       - path: App
       - path: Shared
@@ -95,10 +98,9 @@ targets:
       path: Config/MarkdownPreviewExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        com.apple.security.network.client: true
         com.apple.security.files.user-selected.read-only: true
-        com.apple.security.temporary-exception.files.absolute-path.read-only:
-          - /
+        com.apple.security.application-groups:
+          - 8C2T254JY2.mdgitview.preview
     sources:
       - path: PreviewExtension
       - path: Shared

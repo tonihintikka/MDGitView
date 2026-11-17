@@ -2,7 +2,7 @@ import Foundation
 import QuickLookUI
 import UniformTypeIdentifiers
 
-final class MarkdownPreviewProvider: QLPreviewProvider {
+final class MarkdownPreviewProvider: QLPreviewProvider, QLPreviewingController {
 
     func providePreview(
         for request: QLFilePreviewRequest
@@ -23,11 +23,20 @@ final class MarkdownPreviewProvider: QLPreviewProvider {
                 throw MarkdownRenderServiceError.unreadableFile
             }
 
+            if let cachedPDF = PreviewPDFCache.pdfURL(for: fileURL, sourceData: data) {
+                NSLog("Quick Look PDF cache hit for %{public}@", fileURL.lastPathComponent)
+                let reply = QLPreviewReply(fileURL: cachedPDF)
+                reply.title = fileURL.lastPathComponent
+                return reply
+            }
+            NSLog("Quick Look PDF cache miss for %{public}@", fileURL.lastPathComponent)
+
             let baseDirectory = fileURL.deletingLastPathComponent()
             let options = RenderOptions(
                 enable_gfm: true,
                 enable_mermaid: false,
-                enable_math: false,
+                enable_math: true,
+                embed_local_images: true,
                 base_dir: baseDirectory.path,
                 allowed_root_dir: baseDirectory.path,
                 theme: "github-light"
@@ -65,6 +74,7 @@ final class MarkdownPreviewProvider: QLPreviewProvider {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; img-src data:; style-src 'unsafe-inline';">
           <title>\(escapedTitle)</title>
           <style>
           \(css)
@@ -77,15 +87,58 @@ final class MarkdownPreviewProvider: QLPreviewProvider {
             color: var(--muted);
             margin-bottom: 8px;
           }
+          .ql-preview-notice, .ql-remote-image {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--muted);
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+          }
           </style>
         </head>
         <body class="markdown-body">
           <article>
-          \(content)
+          \(previewSourceContent(from: content))
           </article>
         </body>
         </html>
         """
+    }
+
+    private func previewSourceContent(from content: String) -> String {
+        let mermaidPattern = #"(?s)(<pre><code class="language-mermaid">.*?</code></pre>)"#
+        let mermaidNotice = #"$1<div class="ql-mermaid-notice">Diagram rendered in MDGitView app</div>"#
+        let withMermaidNotices = content.replacingOccurrences(
+            of: mermaidPattern,
+            with: mermaidNotice,
+            options: .regularExpression
+        )
+
+        guard let mathRegex = try? NSRegularExpression(
+            pattern: #"(?s)<span class="math math-(inline|display)">(.*?)</span>"#
+        ) else {
+            return withMermaidNotices
+        }
+
+        let range = NSRange(withMermaidNotices.startIndex..., in: withMermaidNotices)
+        let matches = mathRegex.matches(in: withMermaidNotices, range: range).reversed()
+        var output = withMermaidNotices
+        for match in matches {
+            guard let kindRange = Range(match.range(at: 1), in: output),
+                  let sourceRange = Range(match.range(at: 2), in: output),
+                  let fullRange = Range(match.range, in: output) else { continue }
+            let kind = String(output[kindRange])
+            let source = String(output[sourceRange])
+            let sourceBlock = kind == "display"
+                ? "<pre><code class=\"ql-math-source\">\(source)</code></pre>"
+                : "<code class=\"ql-math-source\">\(source)</code>"
+            let notice = "<div class=\"ql-preview-notice\">Math rendered in MDGitView app</div>"
+            output.replaceSubrange(fullRange, with: sourceBlock + notice)
+        }
+        return output
     }
 
     private func loadCSS() -> String {
@@ -124,6 +177,7 @@ final class MarkdownPreviewProvider: QLPreviewProvider {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; img-src data:; style-src 'unsafe-inline';">
         </head>
         <body style="font-family: -apple-system; padding: 20px;">
           <h3>Preview unavailable</h3>
