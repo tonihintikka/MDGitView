@@ -580,31 +580,6 @@ fn sanitize_html(html: &str, allow_embedded_images: bool) -> String {
     builder.clean(html).to_string()
 }
 
-fn inject_heading_ids(html: &str, toc: &[TocItem]) -> String {
-    let regex = Regex::new(r"(?s)<h([1-6])>(.*?)</h[1-6]>").expect("valid heading regex");
-    let mut index = 0usize;
-
-    regex
-        .replace_all(html, |caps: &regex::Captures<'_>| {
-            let level = caps
-                .get(1)
-                .and_then(|v| v.as_str().parse::<u8>().ok())
-                .unwrap_or(1);
-            let contents = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-
-            let anchor = toc
-                .iter()
-                .skip(index)
-                .find(|item| item.level == level)
-                .map(|item| item.anchor.clone())
-                .unwrap_or_else(|| format!("user-content-heading-{index}"));
-            index += 1;
-
-            format!("<h{level} id=\"{anchor}\">{contents}</h{level}>")
-        })
-        .to_string()
-}
-
 fn rewrite_mermaid_blocks(html: &str) -> String {
     let regex = Regex::new(r#"(?s)<pre><code class="language-mermaid">(.*?)</code></pre>"#)
         .expect("valid mermaid regex");
@@ -801,5 +776,51 @@ mod tests {
         assert_eq!(output.toc.len(), 2);
         assert_eq!(output.toc[0].anchor, "user-content-same");
         assert_eq!(output.toc[1].anchor, "user-content-same-1");
+    }
+
+    #[test]
+    fn ignores_hash_lines_inside_fenced_code_when_building_toc() {
+        let input = "```bash\n# not a heading\n```\n\n# Real heading\n";
+        let output = render_markdown(input, &RenderOptions::default()).expect("render should pass");
+
+        assert_eq!(output.toc.len(), 1);
+        assert_eq!(output.toc[0].title, "Real heading");
+        assert!(output.html.contains("id=\"user-content-real-heading\""));
+    }
+
+    #[test]
+    fn includes_setext_headings_in_toc_and_html_ids() {
+        let input = "Setext title\n---\n\nAnother title\n===\n";
+        let output = render_markdown(input, &RenderOptions::default()).expect("render should pass");
+
+        assert_eq!(output.toc.len(), 2);
+        assert_eq!(output.toc[0].title, "Setext title");
+        assert_eq!(output.toc[1].title, "Another title");
+        assert!(output
+            .html
+            .contains("<h2 id=\"user-content-setext-title\">"));
+        assert!(output
+            .html
+            .contains("<h1 id=\"user-content-another-title\">"));
+    }
+
+    #[test]
+    fn keeps_unicode_letters_in_heading_slugs() {
+        let output = render_markdown("# Käyttö ja Äänestys\n", &RenderOptions::default())
+            .expect("render should pass");
+
+        assert_eq!(output.toc[0].anchor, "user-content-käyttö-ja-äänestys");
+        assert!(output
+            .html
+            .contains("id=\"user-content-käyttö-ja-äänestys\""));
+    }
+
+    #[test]
+    fn does_not_treat_hash_without_space_as_a_heading() {
+        let output =
+            render_markdown("#hashtag\n", &RenderOptions::default()).expect("render should pass");
+
+        assert!(output.toc.is_empty());
+        assert!(!output.html.contains("<h1"));
     }
 }
