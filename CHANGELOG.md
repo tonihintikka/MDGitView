@@ -2,7 +2,7 @@
 
 All notable changes to MDGitView are documented here.
 
-## Unreleased
+## [1.0] - 2026-11-23
 
 ### Fixed
 - Quick Look preview renders sanitized Markdown HTML with a restrictive CSP, readable local images embedded within size limits, and source notices for Mermaid and math.
@@ -12,6 +12,8 @@ All notable changes to MDGitView are documented here.
 - Heading slugs no longer discard Finnish letters, math parsing honors its render option, and smart punctuation is disabled to match GitHub.
 - The main view model shares one method for applying successful render results.
 - The main viewer writes rendered PDF previews to a 250 MiB App Group cache. Quick Look uses a matching PDF cached in the last five minutes and falls back to its sandboxed HTML preview on a miss.
+
+## Unreleased
 
 ## [0.5.2] - 2026-11-16
 

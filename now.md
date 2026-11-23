@@ -1,16 +1,16 @@
 # MDGitView now
 
-Last updated: 2026-11-17
+Last updated: 2026-11-23
 
 ## Current state
 
 - Repository: `tonihintikka/MDGitView`, branch `main`.
-- Current app version: 0.5.2 (`MARKETING_VERSION` in `md-viewer-macos/project.yml`).
+- Current app version: 1.0 (`MARKETING_VERSION` in `md-viewer-macos/project.yml`).
 - The main viewer uses `MarkdownResourceSchemeHandler` and the `mdgitview:` scheme for generated HTML, bundled runtime assets, and permitted local files.
 - The Quick Look preview extension returns a recent PDF from the shared App Group cache when one matches the selected Markdown file. A cache miss uses its HTML flow; it does not share the main app's scheme handler.
 - Mermaid diagrams and MathJax inline and display equations were visually checked in the main viewer on 2026-11-17.
 - The macOS test scheme passed 5 tests on 2026-11-16.
-- Version 0.5.2 is published as GitHub Release `v0.5.2`: https://github.com/tonihintikka/MDGitView/releases/tag/v0.5.2. The attached `MDGitView-v0.5.2-macOS.zip` SHA-256 is `4d00893fe3973dc65ea25f227b62804ced834b535ccb49c77e420556475beb2f`.
+- Version 1.0 is prepared for GitHub release from the current `main` source.
 - The Quick Look, TOC, and FFI changes are implemented. The Rust suite passes 17 tests, and the macOS test scheme passes 5 tests. The preview extension has sandbox and user-selected read-only entitlements, plus App Group access. It has no network or broad filesystem exception.
 - Finder previously selected Obsidian's competing Quick Look extension. Toni approved leaving `md.obsidian.quicklook` disabled and MDGitView enabled. The App Group lookup was approved for the signed preview extension.
 
@@ -24,7 +24,7 @@ The extension launched and received App Group access in the latest `qlmanage` ru
 ## Immediate next steps
 
 1. Verify cache generation, hit, and miss behavior in Finder. The cache hit remains unconfirmed.
-2. The four requested commits are on `main`. Do not publish a release or push without a separate request.
+2. Publish the 1.0 source and release after verifying the release build.
 
 ## State hygiene
 
